@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Register</title>
+    <style>
+        body { font-size: 28px; }
+        h1 { font-size: 32px; }
+        button, input, select, a { font-size: 28px; }
+    </style>
+</head>
+<body>
+    <h1>Register</h1>
+    <form method="POST">
+        <label for="username">Username:</label>
+        <input type="text" name="username" required>
+        
+        <label for="password">Password:</label>
+        <input type="password" name="password" required>
+
+        <label for="role">Role:</label>
+        <select name="role" id="role" onchange="toggleAdminPasscode()" required>
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <div id="admin_passcode_div" style="display: none;">
+            <label for="admin_passcode">Admin Passcode:</label>
+            <input type="password" name="admin_passcode">
+        </div>
+
+        <button type="submit">Register</button>
+    </form>
+
+    <a href="/login">Already have an account? Login here</a>
+
+    <script>
+        function toggleAdminPasscode() {
+            let role = document.getElementById("role").value;
+            let adminPasscodeDiv = document.getElementById("admin_passcode_div");
+            adminPasscodeDiv.style.display = (role === "admin") ? "block" : "none";
+        }
+    </script>
+</body>
+</html>

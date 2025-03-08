@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Students</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid black; padding: 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .pending { color: orange; }
+        .approved { color: green; }
+        .rejected { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Manage Students</h1>
+    
+    <form method="POST">
+        <label for="name">Student Name:</label>
+        <input type="text" name="name" required>
+        <button type="submit">Add Student</button>
+    </form>
+
+    <h2>Students List</h2>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Action</th>
+        </tr>
+        {% for student in students %}
+        <tr>
+            <td>{{ student.name }}</td>
+            <td><a href="{{ url_for('pay_fee', student_id=student.id) }}">Pay Fees</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Pending Fee Requests</h2>
+    {% if pending_payments %}
+    <table>
+        <tr>
+            <th>Student</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+        {% for payment in pending_payments %}
+        <tr>
+            <td>{{ payment.student.name }}</td>
+            <td>{{ payment.amount }}</td>
+            <td class="{{ payment.status.lower() }}">{{ payment.status }}</td>
+            <td>
+                {% if current_user.role == 'admin' and payment.status == 'Pending' %}
+                    <a href="{{ url_for('approve_fee', payment_id=payment.id) }}">Approve</a> |
+                    <a href="{{ url_for('reject_fee', payment_id=payment.id) }}">Reject</a>
+                {% elif payment.status == 'Pending' %}
+                    Waiting for approval
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No pending payments.</p>
+    {% endif %}
+
+    <br>
+    <a href="{{ url_for('home') }}">Back to Home</a>
+</body>
+</html>

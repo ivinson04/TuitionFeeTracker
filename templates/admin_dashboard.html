@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body { font-size: 28px; }
+        table { width: 100%; border-collapse: collapse; font-size: 28px; }
+        th, td { border: 1px solid black; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        h1 { font-size: 32px; }
+        button, input, select, a { font-size: 28px; }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <p>Welcome, {{ current_user.username }}!</p>
+
+    <h1>All Students</h1>
+    <table>
+        <tr>
+            <th>Student Name</th>
+            <th>Pending Fees</th>
+            <th>Actions</th>
+        </tr>
+        {% for student in students %}
+        <tr>
+            <td>{{ student.name }}</td>
+            <td>
+                {% for payment in payments if payment.student_id == student.id and payment.status == "Pending" %}
+                    ₹{{ payment.amount }} (Pending)
+                {% endfor %}
+            </td>
+            <td>
+                {% for payment in payments if payment.student_id == student.id and payment.status == "Pending" %}
+                    <a href="{{ url_for('approve_fee', payment_id=payment.id) }}">Approve</a> |
+                    <a href="{{ url_for('reject_fee', payment_id=payment.id) }}">Reject</a>
+                {% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h1>Approved Transactions</h1>
+    <table>
+        <tr>
+            <th>Student Name</th>
+            <th>Amount</th>
+            <th>Date</th>
+        </tr>
+        {% for payment in payments if payment.status == "Approved" %}
+        <tr>
+            <td>{{ payment.student.name }}</td>
+            <td>₹{{ payment.amount }}</td>
+            <td>{{ payment.date.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <a href="{{ url_for('approved_payments') }}">View Full Payment History</a>
+
+    <h1>Add New Student</h1>
+    <form action="{{ url_for('add_student') }}" method="POST">
+        <input type="text" name="name" placeholder="Student Name" required>
+        <button type="submit">Add Student</button>
+    </form>
+
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>
