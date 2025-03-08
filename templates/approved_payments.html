@@ -3,25 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Approved Payments</title>
+    <title>Payment History - KS Classes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Approved Payments</h1>
-    <table>
-        <tr>
-            <th>Student Name</th>
-            <th>Amount</th>
-            <th>Date</th>
-        </tr>
-        {% for payment in payments %}
-        <tr>
-            <td>{{ payment.student.name }}</td>
-            <td>₹{{ payment.amount }}</td>
-            <td>{{ payment.date.strftime('%Y-%m-%d %H:%M') }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="header">
+        <h1 class="brand">KS Classes</h1>
+        <div class="subtitle">Tuition Fee Tracker</div>
+    </div>
+    
+    <div class="nav-container">
+        <div class="container">
+            <div class="navigation">
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('approved_payments') }}" class="nav-link">Payment History</a>
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+            </div>
+        </div>
+    </div>
 
-    <a href="{{ url_for('admin_dashboard') }}">Back to Admin Dashboard</a>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">Approved Payments</div>
+            <div class="card-body">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.student.name }}</td>
+                            <td>₹{{ payment.amount }}</td>
+                            <td>{{ payment.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2025 KS Classes. All rights reserved.</p>
+    </div>
 </body>
 </html>

@@ -3,70 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Students</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid black; padding: 10px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .pending { color: orange; }
-        .approved { color: green; }
-        .rejected { color: red; }
-    </style>
+    <title>Manage Students - KS Classes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Manage Students</h1>
+    <div class="header">
+        <h1 class="brand">KS Classes</h1>
+        <div class="subtitle">Tuition Fee Tracker</div>
+    </div>
     
-    <form method="POST">
-        <label for="name">Student Name:</label>
-        <input type="text" name="name" required>
-        <button type="submit">Add Student</button>
-    </form>
+    <div class="nav-container">
+        <div class="container">
+            <div class="navigation">
+                <a href="{{ url_for('home') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+            </div>
+        </div>
+    </div>
 
-    <h2>Students List</h2>
-    <table>
-        <tr>
-            <th>Name</th>
-            <th>Action</th>
-        </tr>
-        {% for student in students %}
-        <tr>
-            <td>{{ student.name }}</td>
-            <td><a href="{{ url_for('pay_fee', student_id=student.id) }}">Pay Fees</a></td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    <h2>Pending Fee Requests</h2>
-    {% if pending_payments %}
-    <table>
-        <tr>
-            <th>Student</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Action</th>
-        </tr>
-        {% for payment in pending_payments %}
-        <tr>
-            <td>{{ payment.student.name }}</td>
-            <td>{{ payment.amount }}</td>
-            <td class="{{ payment.status.lower() }}">{{ payment.status }}</td>
-            <td>
-                {% if current_user.role == 'admin' and payment.status == 'Pending' %}
-                    <a href="{{ url_for('approve_fee', payment_id=payment.id) }}">Approve</a> |
-                    <a href="{{ url_for('reject_fee', payment_id=payment.id) }}">Reject</a>
-                {% elif payment.status == 'Pending' %}
-                    Waiting for approval
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% else %}
-    <p>No pending payments.</p>
-    {% endif %}
+        <div class="card">
+            <div class="card-header">Add New Student</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="name">Student Name</label>
+                        <input type="text" id="name" name="name" placeholder="Enter student name" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Student</button>
+                </form>
+            </div>
+        </div>
 
-    <br>
-    <a href="{{ url_for('home') }}">Back to Home</a>
-</body>
-</html>
+        <div class="card">
+            <div class="card-header">Students List</div>
+            <div class="card-body">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.name }}</td>
+                            <td><a href="{{ url_for('pay_fee', student_id=student.id) }}" class="btn btn-primary">Pay Fees</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Pending Fee Requests</div>
+            <div class="card-body">
+                {% if pending_payments %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in pending_payments %}
+                        <tr>
+                            <td>{{ payment.student.name }}</td>
+                            <td>₹{{ payment.amount }}</td>
+                            <td class="status-{{ payment.status.lower() }}">{{ payment.status }}</td>
+                            <td>
+                                {% if current_user.role == 'admin' and payment.status == 'Pending' %}
+                                    <a href="{{ url_for('approve_fee', payment_id=payment.id) }}" class="btn btn-success">Approve</a>
+                                    <a href="{{ url_for('reject_fee', payment_id=payment.id) }}" class="btn btn-danger">Reject</a>
+                                {% elif payment.status == 'Pending' %}
+                                    <span class="status-pending">Waiting for approval</span>
+                                {% endif %}
