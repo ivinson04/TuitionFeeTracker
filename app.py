@@ -1,8 +1,13 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+
+# Ensure instance folder exists
+if not os.path.exists('instance'):
+    os.makedirs('instance')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
@@ -179,4 +184,5 @@ def approved_payments():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        print("Database initialized successfully!")  # Debugging log
     app.run(debug=True, port=5001)
