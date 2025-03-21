@@ -40,6 +40,14 @@ class Payment(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50), default='Pending')
 
+# Add this after the existing models
+class Announcement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(150), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    date_posted = db.Column(db.DateTime, default=datetime.utcnow)
+    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -92,6 +100,42 @@ def login():
             flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
+
+@app.route('/add_announcement', methods=['POST'])
+@login_required
+def add_announcement():
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    title = request.form['title']
+    content = request.form['content']
+
+    new_announcement = Announcement(
+        title=title,
+        content=content,
+        admin_id=current_user.id
+    )
+
+    db.session.add(new_announcement)
+    db.session.commit()
+    flash('Announcement posted successfully!', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/delete_announcement/<int:announcement_id>')
+@login_required
+def delete_announcement(announcement_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    announcement = Announcement.query.get_or_404(announcement_id)
+    db.session.delete(announcement)
+    db.session.commit()
+    flash('Announcement deleted successfully!', 'success')
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -107,7 +151,8 @@ def admin_dashboard():
         return redirect(url_for('home'))
     students = Student.query.all()
     payments = Payment.query.all()
-    return render_template('admin_dashboard.html', students=students, payments=payments)
+    announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
+    return render_template('admin_dashboard.html', students=students, payments=payments, announcements=announcements)
 
 @app.route('/student_dashboard')
 @login_required
@@ -117,7 +162,9 @@ def student_dashboard():
         return redirect(url_for('home'))
     student = Student.query.filter_by(name=current_user.username).first()
     payments = Payment.query.filter_by(student_id=student.id).all() if student else []
-    return render_template('student_dashboard.html', student=student, payments=payments)
+    # Get recent announcements for students to see
+    announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
+    return render_template('student_dashboard.html', student=student, payments=payments, announcements=announcements)
 
 @app.route('/add_student', methods=['POST'])
 @login_required

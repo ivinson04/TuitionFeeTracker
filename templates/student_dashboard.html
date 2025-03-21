@@ -40,7 +40,23 @@
                 Welcome, {{ current_user.username }}!
             </div>
         </div>
-
+	<!-- Add this card after the welcome card -->
+<div class="card">
+    <div class="card-header">Announcements</div>
+    <div class="card-body">
+        {% if announcements %}
+            {% for announcement in announcements %}
+                <div class="announcement-item" style="border-bottom: 1px solid var(--light-gray); margin-bottom: 1rem; padding-bottom: 1rem;">
+                    <h3 style="color: var(--primary); margin-bottom: 0.5rem;">{{ announcement.title }}</h3>
+                    <p style="white-space: pre-wrap;">{{ announcement.content }}</p>
+                    <small style="color: var(--gray);">Posted on: {{ announcement.date_posted.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-center">No announcements at this time.</p>
+        {% endif %}
+    </div>
+</div>
         <div class="card">
             <div class="card-header">Request Payment</div>
             <div class="card-body">
