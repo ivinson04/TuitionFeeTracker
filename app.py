@@ -1,6 +1,7 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.utils import secure_filename
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -46,6 +47,15 @@ class Announcement(db.Model):
     title = db.Column(db.String(150), nullable=False)
     content = db.Column(db.Text, nullable=False)
     date_posted = db.Column(db.DateTime, default=datetime.utcnow)
+    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+# Update the VideoLecture model in app.py
+class VideoLecture(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    filename = db.Column(db.String(255), nullable=False)  # Store the filename instead of URL
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 @login_manager.user_loader
@@ -227,6 +237,100 @@ def approved_payments():
         return redirect(url_for('home'))
     approved_payments = Payment.query.filter_by(status='Approved').all()
     return render_template('approved_payments.html', payments=approved_payments)
+
+
+# Add these configurations to app.py
+UPLOAD_FOLDER = 'static/videos'
+ALLOWED_EXTENSIONS = {'mp4', 'webm', 'ogg'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # Limit uploads to 500MB
+
+# Ensure the upload directory exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route('/video_lectures')
+@login_required
+def video_lectures():
+    lectures = VideoLecture.query.order_by(VideoLecture.date_added.desc()).all()
+    return render_template('video_lectures.html', lectures=lectures)
+
+
+@app.route('/add_video_lecture', methods=['POST'])
+@login_required
+def add_video_lecture():
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    title = request.form['title']
+    description = request.form['description']
+
+    # Handle file upload
+    if 'video_file' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('video_lectures'))
+
+    file = request.files['video_file']
+
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('video_lectures'))
+
+    if file and allowed_file(file.filename):
+        # Create a unique filename to prevent overwriting
+        filename = secure_filename(file.filename)
+        unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
+
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+
+        new_lecture = VideoLecture(
+            title=title,
+            description=description,
+            filename=unique_filename,
+            admin_id=current_user.id
+        )
+
+        db.session.add(new_lecture)
+        db.session.commit()
+        flash('Video lecture added successfully!', 'success')
+    else:
+        flash('Invalid file type. Only MP4, WebM, and OGG files are allowed.', 'danger')
+
+    return redirect(url_for('video_lectures'))
+
+
+@app.route('/delete_video_lecture/<int:lecture_id>')
+@login_required
+def delete_video_lecture(lecture_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    lecture = VideoLecture.query.get_or_404(lecture_id)
+
+    # Delete the file from the server
+    try:
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], lecture.filename))
+    except:
+        flash('Warning: Could not delete the video file from server', 'warning')
+
+    db.session.delete(lecture)
+    db.session.commit()
+    flash('Video lecture deleted successfully!', 'success')
+    return redirect(url_for('video_lectures'))
+
+
+@app.route('/video/<filename>')
+@login_required
+def serve_video(filename):
+    """Serve video files only to authenticated users"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
     with app.app_context():
