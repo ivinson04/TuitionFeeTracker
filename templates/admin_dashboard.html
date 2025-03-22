@@ -135,6 +135,11 @@
                                     <a href="{{ url_for('approve_fee', payment_id=payment.id) }}" class="btn btn-success">Approve</a>
                                     <a href="{{ url_for('reject_fee', payment_id=payment.id) }}" class="btn btn-danger">Reject</a>
                                 {% endfor %}
+                                <a href="{{ url_for('delete_student', student_id=student.id) }}" 
+                                   class="btn btn-danger" 
+                                   onclick="return confirm('Are you sure you want to delete {{ student.name }}? This will remove their account access and payment history.')">
+                                    Delete Student
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}

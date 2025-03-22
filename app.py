@@ -19,6 +19,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+
 # User model for authentication
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -26,12 +27,14 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='student')
 
+
 # Student model
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    payments = db.relationship('Payment', backref='student', lazy=True)
+    payments = db.relationship('Payment', backref='student', lazy=True, cascade='all, delete-orphan')
+
 
 # Payment model
 class Payment(db.Model):
@@ -41,6 +44,7 @@ class Payment(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50), default='Pending')
 
+
 # Add this after the existing models
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -48,6 +52,7 @@ class Announcement(db.Model):
     content = db.Column(db.Text, nullable=False)
     date_posted = db.Column(db.DateTime, default=datetime.utcnow)
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
 
 # Update the VideoLecture model in app.py
 class VideoLecture(db.Model):
@@ -58,9 +63,11 @@ class VideoLecture(db.Model):
     date_added = db.Column(db.DateTime, default=datetime.utcnow)
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 
 @app.route('/')
 @login_required
@@ -69,6 +76,7 @@ def home():
         return redirect(url_for('admin_dashboard'))
     else:
         return redirect(url_for('student_dashboard'))
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -85,6 +93,13 @@ def register():
             flash('Invalid admin registration password! Contact the system owner.', 'danger')
             return redirect(url_for('register'))
 
+        # For student role, check if the student name exists in the Student table
+        if role == 'student':
+            student = Student.query.filter_by(name=username).first()
+            if not student:
+                flash('Student name not found in the system. Please contact your administrator.', 'danger')
+                return redirect(url_for('register'))
+
         # Hash user password and save user
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password=hashed_password, role=role)
@@ -96,6 +111,7 @@ def register():
         return redirect(url_for('login'))
 
     return render_template('register.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -146,12 +162,14 @@ def delete_announcement(announcement_id):
     flash('Announcement deleted successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
 
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
+
 
 @app.route('/admin_dashboard')
 @login_required
@@ -163,6 +181,7 @@ def admin_dashboard():
     payments = Payment.query.all()
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
     return render_template('admin_dashboard.html', students=students, payments=payments, announcements=announcements)
+
 
 @app.route('/student_dashboard')
 @login_required
@@ -176,6 +195,7 @@ def student_dashboard():
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
     return render_template('student_dashboard.html', student=student, payments=payments, announcements=announcements)
 
+
 @app.route('/add_student', methods=['POST'])
 @login_required
 def add_student():
@@ -188,6 +208,30 @@ def add_student():
     db.session.commit()
     flash('Student added successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
+
+
+# Add the delete student route
+@app.route('/delete_student/<int:student_id>')
+@login_required
+def delete_student(student_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    student = Student.query.get_or_404(student_id)
+
+    # First, try to delete any associated user account
+    user = User.query.filter_by(username=student.name, role='student').first()
+    if user:
+        db.session.delete(user)
+
+    # Then delete the student (payments will be automatically deleted due to cascade)
+    db.session.delete(student)
+    db.session.commit()
+
+    flash(f'Student "{student.name}" deleted successfully!', 'success')
+    return redirect(url_for('admin_dashboard'))
+
 
 @app.route('/pay_fee/<int:student_id>', methods=['POST'])
 @login_required
@@ -203,6 +247,7 @@ def pay_fee(student_id):
     flash("Fee payment request submitted!", "success")
     return redirect(url_for('student_dashboard'))
 
+
 @app.route('/approve_fee/<int:payment_id>')
 @login_required
 def approve_fee(payment_id):
@@ -216,6 +261,7 @@ def approve_fee(payment_id):
         flash("Fee payment approved!", "success")
     return redirect(url_for('admin_dashboard'))
 
+
 @app.route('/reject_fee/<int:payment_id>')
 @login_required
 def reject_fee(payment_id):
@@ -228,6 +274,7 @@ def reject_fee(payment_id):
         db.session.commit()
         flash("Fee payment rejected!", "danger")
     return redirect(url_for('admin_dashboard'))
+
 
 @app.route('/approved_payments')
 @login_required
@@ -331,6 +378,7 @@ def delete_video_lecture(lecture_id):
 def serve_video(filename):
     """Serve video files only to authenticated users"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 
 if __name__ == '__main__':
     with app.app_context():
