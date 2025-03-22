@@ -45,7 +45,7 @@ class Payment(db.Model):
     status = db.Column(db.String(50), default='Pending')
 
 
-# Add this after the existing models
+# Announcement model
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(150), nullable=False)
@@ -54,14 +54,35 @@ class Announcement(db.Model):
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
 
-# Update the VideoLecture model in app.py
+# New Subject model (for video playlists)
+class Subject(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    chapters = db.relationship('Chapter', backref='subject', lazy=True, cascade='all, delete-orphan')
+
+
+# New Chapter model (for organizing videos within subjects)
+class Chapter(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
+    date_created = db.Column(db.DateTime, default=datetime.utcnow)
+    videos = db.relationship('VideoLecture', backref='chapter', lazy=True, cascade='all, delete-orphan')
+
+
+# Updated VideoLecture model with subject and chapter relationships
 class VideoLecture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    filename = db.Column(db.String(255), nullable=False)  # Store the filename instead of URL
+    filename = db.Column(db.String(255), nullable=False)
     date_added = db.Column(db.DateTime, default=datetime.utcnow)
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
 
 
 @login_manager.user_loader
@@ -210,7 +231,6 @@ def add_student():
     return redirect(url_for('admin_dashboard'))
 
 
-# Add the delete student route
 @app.route('/delete_student/<int:student_id>')
 @login_required
 def delete_student(student_id):
@@ -301,13 +321,111 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+# Updated route for video lectures page
 @app.route('/video_lectures')
 @login_required
 def video_lectures():
-    lectures = VideoLecture.query.order_by(VideoLecture.date_added.desc()).all()
-    return render_template('video_lectures.html', lectures=lectures)
+    subjects = Subject.query.order_by(Subject.name).all()
+    # For uncategorized videos, find videos with no chapter_id
+    uncategorized_videos = VideoLecture.query.filter_by(chapter_id=None).order_by(VideoLecture.date_added.desc()).all()
+    return render_template('video_lectures.html', subjects=subjects, uncategorized_videos=uncategorized_videos)
 
 
+# New route for adding subjects
+@app.route('/add_subject', methods=['POST'])
+@login_required
+def add_subject():
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    name = request.form['name']
+    description = request.form.get('description', '')
+
+    new_subject = Subject(
+        name=name,
+        description=description,
+        admin_id=current_user.id
+    )
+
+    db.session.add(new_subject)
+    db.session.commit()
+    flash('Subject added successfully!', 'success')
+    return redirect(url_for('video_lectures'))
+
+
+# New route for deleting subjects
+@app.route('/delete_subject/<int:subject_id>')
+@login_required
+def delete_subject(subject_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    subject = Subject.query.get_or_404(subject_id)
+
+    # Delete all videos in chapters
+    for chapter in subject.chapters:
+        for video in chapter.videos:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], video.filename))
+            except:
+                flash(f'Warning: Could not delete the video file "{video.title}" from server', 'warning')
+
+    db.session.delete(subject)
+    db.session.commit()
+    flash(f'Subject "{subject.name}" and all its content deleted successfully!', 'success')
+    return redirect(url_for('video_lectures'))
+
+
+# New route for adding chapters
+@app.route('/add_chapter', methods=['POST'])
+@login_required
+def add_chapter():
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    subject_id = request.form['subject_id']
+    name = request.form['name']
+    description = request.form.get('description', '')
+
+    new_chapter = Chapter(
+        name=name,
+        description=description,
+        subject_id=subject_id
+    )
+
+    db.session.add(new_chapter)
+    db.session.commit()
+    flash('Chapter added successfully!', 'success')
+    return redirect(url_for('video_lectures'))
+
+
+# New route for deleting chapters
+@app.route('/delete_chapter/<int:chapter_id>')
+@login_required
+def delete_chapter(chapter_id):
+    if current_user.role != 'admin':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('home'))
+
+    chapter = Chapter.query.get_or_404(chapter_id)
+
+    # Delete all videos in chapter
+    for video in chapter.videos:
+        try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], video.filename))
+        except:
+            flash(f'Warning: Could not delete the video file "{video.title}" from server', 'warning')
+
+    db.session.delete(chapter)
+    db.session.commit()
+    flash(f'Chapter "{chapter.name}" and all its videos deleted successfully!', 'success')
+    return redirect(url_for('video_lectures'))
+
+
+# Updated route for adding video lectures
 @app.route('/add_video_lecture', methods=['POST'])
 @login_required
 def add_video_lecture():
@@ -317,6 +435,11 @@ def add_video_lecture():
 
     title = request.form['title']
     description = request.form['description']
+    chapter_id = request.form.get('chapter_id')
+
+    # Handle empty chapter_id
+    if chapter_id == "":
+        chapter_id = None
 
     # Handle file upload
     if 'video_file' not in request.files:
@@ -340,7 +463,8 @@ def add_video_lecture():
             title=title,
             description=description,
             filename=unique_filename,
-            admin_id=current_user.id
+            admin_id=current_user.id,
+            chapter_id=chapter_id
         )
 
         db.session.add(new_lecture)

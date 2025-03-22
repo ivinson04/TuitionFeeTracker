@@ -6,11 +6,95 @@
     <title>Video Lectures - KS Classes</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1936562866322214" crossorigin="anonymous"></script>
+    <style>
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .video-card {
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .video-thumbnail {
+            width: 100%;
+            height: 180px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-info {
+            padding: 15px;
+        }
+        .video-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        .video-description {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        .video-date {
+            font-size: 0.8rem;
+            color: var(--light-gray);
+        }
+        .accordion {
+            margin-bottom: 20px;
+        }
+        .accordion-header {
+            background-color: var(--light-gray);
+            padding: 15px;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .accordion-content {
+            padding: 15px;
+            border: 1px solid var(--light-gray);
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .chapter-header {
+            background-color: #f9f9f9;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chapter-content {
+            padding: 10px 15px;
+        }
+        .hidden {
+            display: none;
+        }
+        .admin-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--light-gray);
+        }
+    </style>
 </head>
 <body>
     <div class="header">
         <h1 class="brand">KS Classes</h1>
-        <div class="subtitle">Tuition Fee Tracker</div>
+        <div class="subtitle">Video Lectures</div>
     </div>
     
     <div class="nav-container">
@@ -39,65 +123,206 @@
             {% endif %}
         {% endwith %}
 
-        {% if current_user.role == 'admin' %}
         <div class="card">
-            <div class="card-header">Add New Video Lecture</div>
+            <div class="card-header">Video Lectures</div>
             <div class="card-body">
-                <form action="{{ url_for('add_video_lecture') }}" method="POST" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="title">Lecture Title</label>
-                        <input type="text" id="title" name="title" placeholder="Enter lecture title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea id="description" name="description" rows="3" placeholder="Enter lecture description"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="video_file">Video File</label>
-                        <input type="file" id="video_file" name="video_file" accept="video/mp4,video/webm,video/ogg" required>
-                        <small style="color: var(--gray); display: block; margin-top: 0.5rem;">
-                            Supported formats: MP4, WebM, OGG (Max size: 500MB)
-                        </small>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Upload Video Lecture</button>
-                </form>
-            </div>
-        </div>
-        {% endif %}
+                {% if current_user.role == 'admin' %}
+                <div class="admin-controls">
+                    <button onclick="toggleForm('addSubjectForm')" class="btn btn-primary">Add New Subject</button>
+                    <button onclick="toggleForm('addVideoForm')" class="btn btn-primary">Upload New Video</button>
+                </div>
 
-        <div class="card">
-            <div class="card-header">Available Video Lectures</div>
-            <div class="card-body">
-                {% if lectures %}
-                    <div class="lecture-grid">
-                        {% for lecture in lectures %}
-                            <div class="lecture-card">
-                                <div class="video-container">
-                                    <video controls width="100%">
-                                        <source src="{{ url_for('serve_video', filename=lecture.filename) }}" type="video/mp4">
-                                        Your browser does not support the video tag.
-                                    </video>
+                <!-- Add Subject Form -->
+                <div id="addSubjectForm" class="form-container hidden">
+                    <h3>Add New Subject</h3>
+                    <form action="{{ url_for('add_subject') }}" method="POST">
+                        <div class="form-group">
+                            <label for="name">Subject Name</label>
+                            <input type="text" id="name" name="name" placeholder="e.g., Mathematics, Science" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Description (Optional)</label>
+                            <textarea id="description" name="description" rows="3" placeholder="Enter subject description"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Add Subject</button>
+                        <button type="button" onclick="toggleForm('addSubjectForm')" class="btn btn-outline">Cancel</button>
+                    </form>
+                </div>
+
+                <!-- Add Chapter Form -->
+                <div id="addChapterForm" class="form-container hidden">
+                    <h3>Add New Chapter</h3>
+                    <form action="{{ url_for('add_chapter') }}" method="POST">
+                        <input type="hidden" id="subject_id_for_chapter" name="subject_id" value="">
+                        <div class="form-group">
+                            <label for="chapter_name">Chapter Name</label>
+                            <input type="text" id="chapter_name" name="name" placeholder="e.g., Algebra, Geometry" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="chapter_description">Description (Optional)</label>
+                            <textarea id="chapter_description" name="description" rows="3" placeholder="Enter chapter description"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success">Add Chapter</button>
+                        <button type="button" onclick="toggleForm('addChapterForm')" class="btn btn-outline">Cancel</button>
+                    </form>
+                </div>
+
+                <!-- Upload Video Form -->
+                <div id="addVideoForm" class="form-container hidden">
+                    <h3>Upload New Video Lecture</h3>
+                    <form action="{{ url_for('add_video_lecture') }}" method="POST" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="title">Video Title</label>
+                            <input type="text" id="title" name="title" placeholder="Enter video title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" rows="3" placeholder="Enter video description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="chapter_id">Select Category</label>
+                            <select id="chapter_id" name="chapter_id">
+                                <option value="">-- Uncategorized --</option>
+                                {% for subject in subjects %}
+                                    <optgroup label="{{ subject.name }}">
+                                        {% for chapter in subject.chapters %}
+                                            <option value="{{ chapter.id }}">{{ subject.name }} - {{ chapter.name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="video_file">Video File (MP4, WebM, OGG)</label>
+                            <input type="file" id="video_file" name="video_file" accept=".mp4,.webm,.ogg" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">Upload Video</button>
+                        <button type="button" onclick="toggleForm('addVideoForm')" class="btn btn-outline">Cancel</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <!-- Subjects and Chapters Accordion -->
+                {% if subjects %}
+                    <div class="subjects-container">
+                        {% for subject in subjects %}
+                            <div class="accordion">
+                                <div class="accordion-header" onclick="toggleAccordion('subject-{{ subject.id }}')">
+                                    {{ subject.name }}
+                                    <span class="toggle-icon">+</span>
                                 </div>
-                                <div class="lecture-content">
-                                    <h3 class="lecture-title">{{ lecture.title }}</h3>
-                                    <p class="lecture-description">{{ lecture.description }}</p>
-                                    <small class="lecture-meta">Added on: {{ lecture.date_added.strftime('%Y-%m-%d') }}</small>
+                                <div id="subject-{{ subject.id }}" class="accordion-content hidden">
+                                    {% if subject.description %}
+                                        <p>{{ subject.description }}</p>
+                                    {% endif %}
                                     
                                     {% if current_user.role == 'admin' %}
-                                    <div style="margin-top: 1rem;">
-                                        <a href="{{ url_for('delete_video_lecture', lecture_id=lecture.id) }}" 
-                                           class="btn btn-danger" 
-                                           onclick="return confirm('Are you sure you want to delete this video lecture?')">
-                                            Delete
-                                        </a>
-                                    </div>
+                                        <div class="admin-actions">
+                                            <button onclick="showAddChapterForm('{{ subject.id }}')" class="btn btn-outline">Add Chapter</button>
+                                            <a href="{{ url_for('delete_subject', subject_id=subject.id) }}" class="btn btn-danger" 
+                                               onclick="return confirm('Are you sure you want to delete this subject and ALL its content?')">
+                                                Delete Subject
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if subject.chapters %}
+                                        {% for chapter in subject.chapters %}
+                                            <div class="chapter">
+                                                <div class="chapter-header" onclick="toggleAccordion('chapter-{{ chapter.id }}')">
+                                                    {{ chapter.name }}
+                                                    <span class="toggle-icon">+</span>
+                                                </div>
+                                                <div id="chapter-{{ chapter.id }}" class="chapter-content hidden">
+                                                    {% if chapter.description %}
+                                                        <p>{{ chapter.description }}</p>
+                                                    {% endif %}
+                                                    
+                                                    {% if current_user.role == 'admin' %}
+                                                        <div class="admin-actions">
+                                                            <a href="{{ url_for('delete_chapter', chapter_id=chapter.id) }}" class="btn btn-danger" 
+                                                               onclick="return confirm('Are you sure you want to delete this chapter and ALL its videos?')">
+                                                                Delete Chapter
+                                                            </a>
+                                                        </div>
+                                                    {% endif %}
+                                                    
+                                                    {% if chapter.videos %}
+                                                        <div class="video-grid">
+                                                            {% for video in chapter.videos %}
+                                                                <div class="video-card">
+                                                                    <div class="video-thumbnail">
+                                                                        <a href="{{ url_for('serve_video', filename=video.filename) }}" target="_blank">
+                                                                            <img src="/api/placeholder/300/180" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                                                                        </a>
+                                                                    </div>
+                                                                    <div class="video-info">
+                                                                        <h3 class="video-title">{{ video.title }}</h3>
+                                                                        <p class="video-description">{{ video.description }}</p>
+                                                                        <p class="video-date">Added: {{ video.date_added.strftime('%Y-%m-%d') }}</p>
+                                                                        
+                                                                        {% if current_user.role == 'admin' %}
+                                                                            <a href="{{ url_for('delete_video_lecture', lecture_id=video.id) }}" 
+                                                                               class="btn btn-danger btn-sm" 
+                                                                               onclick="return confirm('Are you sure you want to delete this video?')">
+                                                                                Delete
+                                                                            </a>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% else %}
+                                                        <p class="text-center">No videos in this chapter yet.</p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-center">No chapters in this subject yet.</p>
                                     {% endif %}
                                 </div>
                             </div>
                         {% endfor %}
                     </div>
                 {% else %}
-                    <p class="text-center">No video lectures available yet.</p>
+                    <p class="text-center">No subjects have been created yet.</p>
+                {% endif %}
+
+                <!-- Uncategorized Videos Section -->
+                {% if uncategorized_videos %}
+                    <div class="accordion">
+                        <div class="accordion-header" onclick="toggleAccordion('uncategorized-videos')">
+                            Uncategorized Videos
+                            <span class="toggle-icon">+</span>
+                        </div>
+                        <div id="uncategorized-videos" class="accordion-content hidden">
+                            <div class="video-grid">
+                                {% for video in uncategorized_videos %}
+                                    <div class="video-card">
+                                        <div class="video-thumbnail">
+                                            <a href="{{ url_for('serve_video', filename=video.filename) }}" target="_blank">
+                                                <img src="/api/placeholder/300/180" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                                            </a>
+                                        </div>
+                                        <div class="video-info">
+                                            <h3 class="video-title">{{ video.title }}</h3>
+                                            <p class="video-description">{{ video.description }}</p>
+                                            <p class="video-date">Added: {{ video.date_added.strftime('%Y-%m-%d') }}</p>
+                                            
+                                            {% if current_user.role == 'admin' %}
+                                                <a href="{{ url_for('delete_video_lecture', lecture_id=video.id) }}" 
+                                                   class="btn btn-danger btn-sm" 
+                                                   onclick="return confirm('Are you sure you want to delete this video?')">
+                                                    Delete
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -106,5 +331,39 @@
     <div class="footer">
         <p>&copy; 2025 KS Classes. All rights reserved.</p>
     </div>
+
+    <script>
+        function toggleForm(formId) {
+            const form = document.getElementById(formId);
+            const forms = document.querySelectorAll('.form-container');
+            
+            // Hide all forms first
+            forms.forEach(f => f.classList.add('hidden'));
+            
+            // Show the requested form
+            if (form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+            }
+        }
+        
+        function showAddChapterForm(subjectId) {
+            document.getElementById('subject_id_for_chapter').value = subjectId;
+            toggleForm('addChapterForm');
+        }
+        
+        function toggleAccordion(id) {
+            const content = document.getElementById(id);
+            const header = content.previousElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.textContent = '-';
+            } else {
+                content.classList.add('hidden');
+                icon.textContent = '+';
+            }
+        }
+    </script>
 </body>
 </html>
