@@ -1,10 +1,13 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+import mammoth
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
+from PyPDF2 import PdfReader
 from werkzeug.utils import secure_filename
+import io
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Ensure instance folder exists
 if not os.path.exists('instance'):
@@ -19,6 +22,20 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+# Define allowed extensions
+ALLOWED_EXTENSIONS = {
+    'test': {'pdf', 'docx'},
+    'video': {'mp4', 'webm', 'ogg'},
+    'response': {'pdf', 'docx', 'txt', 'jpg', 'jpeg', 'png'}
+}
+
+# Consolidated allowed_file function
+def allowed_file(filename, file_type='test'):
+    """Check if a file has an allowed extension for the given file_type."""
+    if not filename or '.' not in filename:
+        return False
+    extension = filename.rsplit('.', 1)[1].lower()
+    return extension in ALLOWED_EXTENSIONS.get(file_type, set())
 
 # User model for authentication
 class User(db.Model, UserMixin):
@@ -26,7 +43,7 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='student')
-
+    is_admin = db.Column(db.Boolean, default=False)
 
 # Student model
 class Student(db.Model):
@@ -34,7 +51,7 @@ class Student(db.Model):
     name = db.Column(db.String(150), nullable=False)
     teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     payments = db.relationship('Payment', backref='student', lazy=True, cascade='all, delete-orphan')
-
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 # Payment model
 class Payment(db.Model):
@@ -44,7 +61,6 @@ class Payment(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50), default='Pending')
 
-
 # Announcement model
 class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -53,8 +69,7 @@ class Announcement(db.Model):
     date_posted = db.Column(db.DateTime, default=datetime.utcnow)
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
-
-# New Subject model (for video playlists)
+# Subject model
 class Subject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -63,8 +78,7 @@ class Subject(db.Model):
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     chapters = db.relationship('Chapter', backref='subject', lazy=True, cascade='all, delete-orphan')
 
-
-# New Chapter model (for organizing videos within subjects)
+# Chapter model
 class Chapter(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -73,8 +87,7 @@ class Chapter(db.Model):
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     videos = db.relationship('VideoLecture', backref='chapter', lazy=True, cascade='all, delete-orphan')
 
-
-# Updated VideoLecture model with subject and chapter relationships
+# VideoLecture model
 class VideoLecture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
@@ -84,11 +97,61 @@ class VideoLecture(db.Model):
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
 
+# Test model
+class Test(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    is_timed = db.Column(db.Boolean, default=False)
+    time_limit = db.Column(db.Integer)
+    content = db.Column(db.Text)
+    file_path = db.Column(db.String(255))
+    date_created = db.Column(db.DateTime, default=datetime.now)
+    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    assignments = db.relationship('TestAssignment', backref='test', lazy=True, cascade="all, delete-orphan")
+
+# Test Assignment model
+class TestAssignment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    test_id = db.Column(db.Integer, db.ForeignKey('test.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    status = db.Column(db.String(20), default='Pending')
+    date_assigned = db.Column(db.DateTime, default=datetime.now)
+    start_time = db.Column(db.DateTime)
+    end_time = db.Column(db.DateTime)
+    score = db.Column(db.Float)
+    due_date = db.Column(db.DateTime)
+    responses = db.relationship('TestResponse', backref='assignment', lazy=True, cascade="all, delete-orphan")
+    student = db.relationship('Student')
+
+# Test Response model
+class TestResponse(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('test_assignment.id'), nullable=False)
+    content = db.Column(db.Text)
+    file_path = db.Column(db.String(255))
+    timestamp = db.Column(db.DateTime, default=datetime.now)
+
+# File upload configurations
+UPLOAD_FOLDER = 'uploads'
+TEST_RESPONSE_FOLDER = 'static/test_responses'
+VIDEO_FOLDER = 'static/videos'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['TEST_RESPONSE_FOLDER'] = TEST_RESPONSE_FOLDER
+app.config['VIDEO_FOLDER'] = VIDEO_FOLDER
+app.config['MAX_TEST_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB for tests
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB for videos
+
+# Ensure directories exist
+for folder in [UPLOAD_FOLDER, TEST_RESPONSE_FOLDER, VIDEO_FOLDER]:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+os.makedirs(os.path.join(UPLOAD_FOLDER, 'tests'), exist_ok=True)
+os.makedirs(os.path.join(UPLOAD_FOLDER, 'responses'), exist_ok=True)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
 
 @app.route('/')
 @login_required
@@ -98,41 +161,34 @@ def home():
     else:
         return redirect(url_for('student_dashboard'))
 
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         role = request.form['role']
-        admin_passcode = request.form.get('admin_passcode', '')  # Get admin password (if provided)
-
-        # Validate admin password
+        admin_passcode = request.form.get('admin_passcode', '')
         allowed_admin_passcodes = {"9@11$", "1@99$"}
-
         if role == 'admin' and admin_passcode not in allowed_admin_passcodes:
             flash('Invalid admin registration password! Contact the system owner.', 'danger')
             return redirect(url_for('register'))
-
-        # For student role, check if the student name exists in the Student table
         if role == 'student':
             student = Student.query.filter_by(name=username).first()
             if not student:
                 flash('Student name not found in the system. Please contact your administrator.', 'danger')
                 return redirect(url_for('register'))
-
-        # Hash user password and save user
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         new_user = User(username=username, password=hashed_password, role=role)
-
         db.session.add(new_user)
         db.session.commit()
-
+        if role == 'student':
+            student = Student.query.filter_by(name=username).first()
+            if student:
+                student.user_id = new_user.id
+                db.session.commit()
         flash('Registration successful! Please log in.', 'success')
         return redirect(url_for('login'))
-
     return render_template('register.html')
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -147,28 +203,19 @@ def login():
             flash('Invalid username or password', 'danger')
     return render_template('login.html')
 
-
 @app.route('/add_announcement', methods=['POST'])
 @login_required
 def add_announcement():
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     title = request.form['title']
     content = request.form['content']
-
-    new_announcement = Announcement(
-        title=title,
-        content=content,
-        admin_id=current_user.id
-    )
-
+    new_announcement = Announcement(title=title, content=content, admin_id=current_user.id)
     db.session.add(new_announcement)
     db.session.commit()
     flash('Announcement posted successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
-
 
 @app.route('/delete_announcement/<int:announcement_id>')
 @login_required
@@ -176,13 +223,11 @@ def delete_announcement(announcement_id):
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     announcement = Announcement.query.get_or_404(announcement_id)
     db.session.delete(announcement)
     db.session.commit()
     flash('Announcement deleted successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
-
 
 @app.route('/logout')
 @login_required
@@ -190,7 +235,6 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
-
 
 @app.route('/admin_dashboard')
 @login_required
@@ -201,8 +245,249 @@ def admin_dashboard():
     students = Student.query.all()
     payments = Payment.query.all()
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
-    return render_template('admin_dashboard.html', students=students, payments=payments, announcements=announcements)
+    tests = Test.query.filter_by(admin_id=current_user.id).order_by(Test.date_created.desc()).all()
+    return render_template('admin_dashboard.html', students=students, payments=payments, announcements=announcements, tests=tests)
 
+
+@app.route('/create_test', methods=['POST'])
+@login_required
+def create_test():
+    if current_user.role != 'admin':
+        flash('Access denied: Admin privileges required', 'danger')
+        return redirect(url_for('student_dashboard'))
+
+    test_title = request.form.get('test_title')
+    test_description = request.form.get('test_description')
+    test_type = request.form.get('test_type')
+    is_timed = (test_type == 'timed')
+    time_limit = int(request.form.get('time_limit', 60)) if is_timed else None
+    test_content = request.form.get('test_content', '')
+
+    new_test = Test(
+        title=test_title,
+        description=test_description,
+        is_timed=is_timed,
+        time_limit=time_limit,
+        content=test_content,
+        date_created=datetime.now(),
+        admin_id=current_user.id
+    )
+
+    db.session.add(new_test)
+    db.session.commit()
+
+    all_students = request.form.get('all_students') == 'all'
+    selected_students = request.form.getlist('selected_students')
+
+    if all_students:
+        students = Student.query.all()
+    else:
+        students = Student.query.filter(Student.id.in_(selected_students)).all()
+
+    for student in students:
+        assignment = TestAssignment(
+            test_id=new_test.id,
+            student_id=student.id,
+            status='Pending',
+            date_assigned=datetime.now()
+        )
+        db.session.add(assignment)
+
+    db.session.commit()
+    flash(f'Test "{test_title}" has been created and assigned to {len(students)} students.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/view_test/<int:test_id>')
+@login_required
+def view_test(test_id):
+    if current_user.role != 'admin':
+        flash('Access denied: Admin privileges required', 'danger')
+        return redirect(url_for('student_dashboard'))
+    test = Test.query.get_or_404(test_id)
+    student_data = []
+    assignments = TestAssignment.query.filter_by(test_id=test.id).all()
+    for assignment in assignments:
+        student = Student.query.get(assignment.student_id)
+        responses = TestResponse.query.filter_by(assignment_id=assignment.id).all()
+        student_data.append({'student': student, 'assignment': assignment, 'responses': responses})
+    return render_template('view_test.html', test=test, student_data=student_data)
+
+@app.route('/delete_test/<int:test_id>')
+@login_required
+def delete_test(test_id):
+    if current_user.role != 'admin':
+        flash('Access denied: Admin privileges required', 'danger')
+        return redirect(url_for('student_dashboard'))
+    test = Test.query.get_or_404(test_id)
+    if test.file_path:
+        file_path = os.path.join(UPLOAD_FOLDER, test.file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    assignments = TestAssignment.query.filter_by(test_id=test.id).all()
+    for assignment in assignments:
+        responses = TestResponse.query.filter_by(assignment_id=assignment.id).all()
+        for response in responses:
+            if response.file_path:
+                response_file_path = os.path.join(UPLOAD_FOLDER, response.file_path)
+                if os.path.exists(response_file_path):
+                    os.remove(response_file_path)
+            db.session.delete(response)
+        db.session.delete(assignment)
+    db.session.delete(test)
+    db.session.commit()
+    flash(f'Test "{test.title}" has been deleted.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/student_tests')
+@login_required
+def student_tests():
+    if current_user.role != 'student':
+        flash('Unauthorized access: Admin users should use the admin dashboard', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        student = Student.query.filter_by(name=current_user.username).first()
+        if student:
+            student.user_id = current_user.id
+            db.session.commit()
+            flash('Your student profile has been linked to your account.', 'info')
+        else:
+            flash('Student profile not found. Please contact your administrator.', 'danger')
+            return redirect(url_for('student_dashboard'))
+    now = datetime.now()
+    pending_assignments = TestAssignment.query.filter_by(student_id=student.id, status='Pending').join(Test).all()
+    in_progress_assignments = TestAssignment.query.filter_by(student_id=student.id, status='In Progress').join(Test).all()
+    completed_assignments = TestAssignment.query.filter_by(student_id=student.id, status='Completed').join(Test).all()
+    return render_template('student_tests.html', pending_assignments=pending_assignments, in_progress_assignments=in_progress_assignments, completed_assignments=completed_assignments, now=now)
+
+@app.route('/take_test/<int:assignment_id>')
+@login_required
+def take_test(assignment_id):
+    if current_user.role != 'student':
+        flash('Access denied: Admin users should use the admin dashboard', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        student = Student.query.filter_by(name=current_user.username).first()
+        if student:
+            student.user_id = current_user.id
+            db.session.commit()
+            flash('Your student profile has been linked to your account.', 'info')
+        else:
+            flash('Student profile not found. Please contact your administrator.', 'danger')
+            return redirect(url_for('student_dashboard'))
+    assignment = TestAssignment.query.get_or_404(assignment_id)
+    if assignment.student_id != student.id:
+        flash('Access denied: This test is not assigned to you.', 'danger')
+        return redirect(url_for('student_tests'))
+    test = Test.query.get(assignment.test_id)
+    file_url = url_for('serve_test_file', filename=test.file_path) if test.file_path else None
+    if assignment.status == 'Pending':
+        assignment.status = 'In Progress'
+        assignment.start_time = datetime.now()
+        db.session.commit()
+    time_remaining = None
+    if test.is_timed and assignment.start_time:
+        end_time = assignment.start_time + timedelta(minutes=test.time_limit)
+        remaining = (end_time - datetime.now()).total_seconds()
+        time_remaining = max(0, int(remaining))
+    response = TestResponse.query.filter_by(assignment_id=assignment.id).order_by(TestResponse.id.desc()).first()
+    return render_template('take_test.html', test=test, assignment=assignment, file_url=file_url, test_content=test.content, time_remaining=time_remaining, response=response)
+
+
+@app.route('/submit_test/<int:assignment_id>', methods=['POST'])
+@login_required
+def submit_test(assignment_id):
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard'))
+
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('student_dashboard'))
+
+    assignment = TestAssignment.query.get_or_404(assignment_id)
+    if assignment.student_id != student.id:
+        flash('Access denied: This test is not assigned to you.', 'danger')
+        return redirect(url_for('student_tests'))
+
+    is_autosave = request.form.get('autosave') == 'true'
+    response_content = request.form.get('response_content', '')
+
+    response = TestResponse(
+        assignment_id=assignment.id,
+        content=response_content,
+        timestamp=datetime.now()
+    )
+
+    db.session.add(response)
+
+    if not is_autosave:
+        assignment.status = 'Completed'
+        assignment.end_time = datetime.now()
+        flash('Your test has been submitted successfully!', 'success')
+
+    db.session.commit()
+
+    if is_autosave:
+        return jsonify({'status': 'success', 'message': 'Response auto-saved'})
+
+    return redirect(url_for('student_tests'))
+
+@app.route('/serve_test_file/<path:filename>')
+@login_required
+def serve_test_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+@app.route('/serve_response_file/<path:filename>')
+@login_required
+def serve_response_file(filename):
+    if current_user.is_admin:
+        return send_from_directory(UPLOAD_FOLDER, filename)
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        abort(403)
+    try:
+        parts = filename.split('_')
+        if len(parts) >= 3 and int(parts[1]) == student.id:
+            return send_from_directory(UPLOAD_FOLDER, filename)
+    except:
+        pass
+    abort(403)
+
+@app.route('/grade_test/<int:assignment_id>', methods=['POST'])
+@login_required
+def grade_test(assignment_id):
+    if current_user.role != 'admin':
+        flash('Access denied: Admin privileges required', 'danger')
+        return redirect(url_for('student_dashboard'))
+    assignment = TestAssignment.query.get_or_404(assignment_id)
+    score = request.form.get('score', type=float)
+    assignment.score = score
+    db.session.commit()
+    test = Test.query.get(assignment.test_id)
+    flash(f'Score saved for {assignment.student.name}.', 'success')
+    return redirect(url_for('view_test', test_id=test.id))
+
+@app.route('/view_completed_test/<int:assignment_id>')
+@login_required
+def view_completed_test(assignment_id):
+    if current_user.is_admin:
+        return redirect(url_for('admin_dashboard'))
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('student_dashboard'))
+    assignment = TestAssignment.query.get_or_404(assignment_id)
+    if assignment.student_id != student.id:
+        flash('Access denied: This test is not assigned to you.', 'danger')
+        return redirect(url_for('student_tests'))
+    if assignment.status != 'Completed':
+        flash('This test has not been completed yet.', 'warning')
+        return redirect(url_for('student_tests'))
+    test = Test.query.get(assignment.test_id)
+    responses = TestResponse.query.filter_by(assignment_id=assignment.id).order_by(TestResponse.timestamp.desc()).all()
+    return render_template('view_completed_test.html', test=test, assignment=assignment, responses=responses)
 
 @app.route('/student_dashboard')
 @login_required
@@ -210,12 +495,18 @@ def student_dashboard():
     if current_user.role != 'student':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-    student = Student.query.filter_by(name=current_user.username).first()
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        student = Student.query.filter_by(name=current_user.username).first()
+        if student:
+            student.user_id = current_user.id
+            db.session.commit()
+            flash('Your student profile has been linked to your account.', 'info')
+        else:
+            flash('Student profile not found. Please contact your administrator.', 'danger')
     payments = Payment.query.filter_by(student_id=student.id).all() if student else []
-    # Get recent announcements for students to see
     announcements = Announcement.query.order_by(Announcement.date_posted.desc()).all()
     return render_template('student_dashboard.html', student=student, payments=payments, announcements=announcements)
-
 
 @app.route('/add_student', methods=['POST'])
 @login_required
@@ -230,28 +521,20 @@ def add_student():
     flash('Student added successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
 
-
 @app.route('/delete_student/<int:student_id>')
 @login_required
 def delete_student(student_id):
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     student = Student.query.get_or_404(student_id)
-
-    # First, try to delete any associated user account
     user = User.query.filter_by(username=student.name, role='student').first()
     if user:
         db.session.delete(user)
-
-    # Then delete the student (payments will be automatically deleted due to cascade)
     db.session.delete(student)
     db.session.commit()
-
     flash(f'Student "{student.name}" deleted successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
-
 
 @app.route('/pay_fee/<int:student_id>', methods=['POST'])
 @login_required
@@ -267,7 +550,6 @@ def pay_fee(student_id):
     flash("Fee payment request submitted!", "success")
     return redirect(url_for('student_dashboard'))
 
-
 @app.route('/approve_fee/<int:payment_id>')
 @login_required
 def approve_fee(payment_id):
@@ -280,7 +562,6 @@ def approve_fee(payment_id):
         db.session.commit()
         flash("Fee payment approved!", "success")
     return redirect(url_for('admin_dashboard'))
-
 
 @app.route('/reject_fee/<int:payment_id>')
 @login_required
@@ -295,7 +576,6 @@ def reject_fee(payment_id):
         flash("Fee payment rejected!", "danger")
     return redirect(url_for('admin_dashboard'))
 
-
 @app.route('/approved_payments')
 @login_required
 def approved_payments():
@@ -305,176 +585,106 @@ def approved_payments():
     approved_payments = Payment.query.filter_by(status='Approved').all()
     return render_template('approved_payments.html', payments=approved_payments)
 
-
-# Add these configurations to app.py
-UPLOAD_FOLDER = 'static/videos'
-ALLOWED_EXTENSIONS = {'mp4', 'webm', 'ogg'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # Limit uploads to 500MB
-
-# Ensure the upload directory exists
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-# Updated route for video lectures page
 @app.route('/video_lectures')
 @login_required
 def video_lectures():
     subjects = Subject.query.order_by(Subject.name).all()
-    # For uncategorized videos, find videos with no chapter_id
     uncategorized_videos = VideoLecture.query.filter_by(chapter_id=None).order_by(VideoLecture.date_added.desc()).all()
     return render_template('video_lectures.html', subjects=subjects, uncategorized_videos=uncategorized_videos)
 
-
-# New route for adding subjects
 @app.route('/add_subject', methods=['POST'])
 @login_required
 def add_subject():
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     name = request.form['name']
     description = request.form.get('description', '')
-
-    new_subject = Subject(
-        name=name,
-        description=description,
-        admin_id=current_user.id
-    )
-
+    new_subject = Subject(name=name, description=description, admin_id=current_user.id)
     db.session.add(new_subject)
     db.session.commit()
     flash('Subject added successfully!', 'success')
     return redirect(url_for('video_lectures'))
 
-
-# New route for deleting subjects
 @app.route('/delete_subject/<int:subject_id>')
 @login_required
 def delete_subject(subject_id):
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     subject = Subject.query.get_or_404(subject_id)
-
-    # Delete all videos in chapters
     for chapter in subject.chapters:
         for video in chapter.videos:
             try:
-                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], video.filename))
+                os.remove(os.path.join(app.config['VIDEO_FOLDER'], video.filename))
             except:
                 flash(f'Warning: Could not delete the video file "{video.title}" from server', 'warning')
-
     db.session.delete(subject)
     db.session.commit()
     flash(f'Subject "{subject.name}" and all its content deleted successfully!', 'success')
     return redirect(url_for('video_lectures'))
 
-
-# New route for adding chapters
 @app.route('/add_chapter', methods=['POST'])
 @login_required
 def add_chapter():
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     subject_id = request.form['subject_id']
     name = request.form['name']
     description = request.form.get('description', '')
-
-    new_chapter = Chapter(
-        name=name,
-        description=description,
-        subject_id=subject_id
-    )
-
+    new_chapter = Chapter(name=name, description=description, subject_id=subject_id)
     db.session.add(new_chapter)
     db.session.commit()
     flash('Chapter added successfully!', 'success')
     return redirect(url_for('video_lectures'))
 
-
-# New route for deleting chapters
 @app.route('/delete_chapter/<int:chapter_id>')
 @login_required
 def delete_chapter(chapter_id):
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     chapter = Chapter.query.get_or_404(chapter_id)
-
-    # Delete all videos in chapter
     for video in chapter.videos:
         try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], video.filename))
+            os.remove(os.path.join(app.config['VIDEO_FOLDER'], video.filename))
         except:
             flash(f'Warning: Could not delete the video file "{video.title}" from server', 'warning')
-
     db.session.delete(chapter)
     db.session.commit()
     flash(f'Chapter "{chapter.name}" and all its videos deleted successfully!', 'success')
     return redirect(url_for('video_lectures'))
 
-
-# Updated route for adding video lectures
 @app.route('/add_video_lecture', methods=['POST'])
 @login_required
 def add_video_lecture():
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     title = request.form['title']
     description = request.form['description']
     chapter_id = request.form.get('chapter_id')
-
-    # Handle empty chapter_id
     if chapter_id == "":
         chapter_id = None
-
-    # Handle file upload
     if 'video_file' not in request.files:
         flash('No file part', 'danger')
         return redirect(url_for('video_lectures'))
-
     file = request.files['video_file']
-
     if file.filename == '':
         flash('No selected file', 'danger')
         return redirect(url_for('video_lectures'))
-
-    if file and allowed_file(file.filename):
-        # Create a unique filename to prevent overwriting
+    if file and allowed_file(file.filename, 'video'):
         filename = secure_filename(file.filename)
         unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
-
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
-
-        new_lecture = VideoLecture(
-            title=title,
-            description=description,
-            filename=unique_filename,
-            admin_id=current_user.id,
-            chapter_id=chapter_id
-        )
-
+        file.save(os.path.join(app.config['VIDEO_FOLDER'], unique_filename))
+        new_lecture = VideoLecture(title=title, description=description, filename=unique_filename, admin_id=current_user.id, chapter_id=chapter_id)
         db.session.add(new_lecture)
         db.session.commit()
         flash('Video lecture added successfully!', 'success')
     else:
         flash('Invalid file type. Only MP4, WebM, and OGG files are allowed.', 'danger')
-
     return redirect(url_for('video_lectures'))
-
 
 @app.route('/delete_video_lecture/<int:lecture_id>')
 @login_required
@@ -482,30 +692,23 @@ def delete_video_lecture(lecture_id):
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-
     lecture = VideoLecture.query.get_or_404(lecture_id)
-
-    # Delete the file from the server
     try:
-        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], lecture.filename))
+        os.remove(os.path.join(app.config['VIDEO_FOLDER'], lecture.filename))
     except:
         flash('Warning: Could not delete the video file from server', 'warning')
-
     db.session.delete(lecture)
     db.session.commit()
     flash('Video lecture deleted successfully!', 'success')
     return redirect(url_for('video_lectures'))
 
-
 @app.route('/video/<filename>')
 @login_required
 def serve_video(filename):
-    """Serve video files only to authenticated users"""
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
+    return send_from_directory(app.config['VIDEO_FOLDER'], filename)
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        print("Database initialized successfully!")  # Debugging log
+        print("Database initialized successfully!")
     app.run(debug=True, port=5001)

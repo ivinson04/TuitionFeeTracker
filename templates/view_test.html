@@ -1,0 +1,179 @@
+<!-- view_test.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Learning Portal</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('video_lectures') }}">Video Lectures</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('approved_payments') }}">Payments</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Test Details: {{ test.title }}</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Test Information</h3>
+            </div>
+            <div class="card-body">
+                <p><strong>Description:</strong> {{ test.description }}</p>
+                <p><strong>Type:</strong> {{ 'Timed' if test.is_timed else 'Untimed' }}</p>
+                {% if test.is_timed %}
+                <p><strong>Time Limit:</strong> {{ test.time_limit }} minutes</p>
+                {% endif %}
+                <p><strong>Date Created:</strong> {{ test.date_created.strftime('%Y-%m-%d %H:%M') }}</p>
+                
+                {% if test.file_path %}
+                <p>
+                    <strong>Test File:</strong> 
+                    <a href="{{ url_for('serve_test_file', filename=test.file_path) }}" target="_blank" class="btn btn-sm btn-info">
+                        View/Download Test File
+                    </a>
+                </p>
+                {% endif %}
+                
+                {% if test.content %}
+                <div class="card mt-3">
+                    <div class="card-header">Test Content Preview</div>
+                    <div class="card-body">
+                        <pre style="white-space: pre-wrap;">{{ test.content }}</pre>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>Student Submissions</h3>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Status</th>
+                            <th>Started</th>
+                            <th>Completed</th>
+                            <th>Score</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in student_data %}
+                        <tr>
+                            <td>{{ data.student.name }}</td>
+                            <td>{{ data.assignment.status }}</td>
+                            <td>{{ data.assignment.start_time.strftime('%Y-%m-%d %H:%M') if data.assignment.start_time else 'Not started' }}</td>
+                            <td>{{ data.assignment.end_time.strftime('%Y-%m-%d %H:%M') if data.assignment.end_time else 'Not completed' }}</td>
+                            <td>{{ data.assignment.score if data.assignment.score is not none else 'Not graded' }}</td>
+                            <td>
+                                {% if data.assignment.status == 'Completed' %}
+                                    {% if data.responses %}
+                                        {% for response in data.responses %}
+                                            {% if response.file_path %}
+                                            <a href="{{ url_for('serve_response_file', filename=response.file_path) }}" target="_blank" class="btn btn-sm btn-info">View Submission</a>
+                                            {% endif %}
+                                            
+                                            {% if response.content %}
+                                            <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#responseModal{{ response.id }}">
+                                                View Response
+                                            </button>
+                                            
+                                            <!-- Response Modal -->
+                                            <div class="modal fade" id="responseModal{{ response.id }}" tabindex="-1" role="dialog" aria-labelledby="responseModalLabel{{ response.id }}" aria-hidden="true">
+                                                <div class="modal-dialog modal-lg" role="document">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="responseModalLabel{{ response.id }}">{{ data.student.name }}'s Response</h5>
+                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <pre style="white-space: pre-wrap;">{{ response.content }}</pre>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                        
+                                        <!-- Grade form -->
+                                        <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#gradeModal{{ data.assignment.id }}">
+                                            Grade
+                                        </button>
+                                        
+                                        <!-- Grade Modal -->
+                                        <div class="modal fade" id="gradeModal{{ data.assignment.id }}" tabindex="-1" role="dialog" aria-labelledby="gradeModalLabel{{ data.assignment.id }}" aria-hidden="true">
+                                            <div class="modal-dialog" role="document">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="gradeModalLabel{{ data.assignment.id }}">Grade {{ data.student.name }}'s Test</h5>
+                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                            <span aria-hidden="true">&times;</span>
+                                                        </button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <form action="{{ url_for('grade_test', assignment_id=data.assignment.id) }}" method="post">
+                                                            <div class="form-group">
+                                                                <label for="score{{ data.assignment.id }}">Score</label>
+                                                                <input type="number" step="0.01" min="0" class="form-control" id="score{{ data.assignment.id }}" name="score" value="{{ data.assignment.score if data.assignment.score is not none else '' }}" required>
+                                                            </div>
+                                                            <button type="submit" class="btn btn-primary">Save Grade</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-warning">No submission data</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-secondary">Waiting for submission</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

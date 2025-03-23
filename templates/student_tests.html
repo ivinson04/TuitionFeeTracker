@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tests - KS Classes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1 class="brand">KS Classes</h1>
+        <div class="subtitle">Learning Portal</div>
+    </div>
+    
+    <div class="nav-container">
+        <div class="container">
+            <div class="navigation">
+                <a href="{{ url_for('student_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('video_lectures') }}" class="nav-link">Video Lectures</a>
+                <a href="{{ url_for('student_tests') }}" class="nav-link">Tests</a>
+                <a href="{{ url_for('student_tests') }}" class="nav-link">Pay Fees</a>
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header">
+                My Tests
+            </div>
+            <div class="card-body">
+                <div class="tests-container">
+                    <h3>Pending Tests</h3>
+                    {% if pending_assignments %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Test Title</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
+                                    <th>Due Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in pending_assignments %}
+                                <tr>
+                                    <td>{{ assignment.test.title }}</td>
+                                    <td>{{ assignment.test.description }}</td>
+                                    <td>{{ 'Timed (' + assignment.test.time_limit|string + ' mins)' if assignment.test.is_timed else 'Untimed' }}</td>
+                                    <td>{{ assignment.due_date.strftime('%Y-%m-%d') if assignment.due_date else 'No deadline' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('take_test', assignment_id=assignment.id) }}" class="btn btn-primary">Start Test</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-center">No pending tests.</p>
+                    {% endif %}
+                </div>
+
+                <div class="tests-container mt-3">
+                    <h3>In Progress Tests</h3>
+                    {% if in_progress_assignments %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Test Title</th>
+                                    <th>Description</th>
+                                    <th>Started On</th>
+                                    <th>Time Remaining</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in in_progress_assignments %}
+                                <tr>
+                                    <td>{{ assignment.test.title }}</td>
+                                    <td>{{ assignment.test.description }}</td>
+                                    <td>{{ assignment.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if assignment.test.is_timed %}
+                                            {% set time_elapsed = (now - assignment.start_time).total_seconds() / 60 %}
+                                            {% set time_remaining = assignment.test.time_limit - time_elapsed %}
+                                            {% if time_remaining > 0 %}
+                                                {{ '%d min %d sec'|format(time_remaining|int, (time_remaining * 60) % 60|int) }}
+                                            {% else %}
+                                                Expired
+                                            {% endif %}
+                                        {% else %}
+                                            No time limit
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('take_test', assignment_id=assignment.id) }}" class="btn btn-warning">Continue Test</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-center">No tests in progress.</p>
+                    {% endif %}
+                </div>
+
+                <div class="tests-container mt-3">
+                    <h3>Completed Tests</h3>
+                    {% if completed_assignments %}
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Test Title</th>
+                                    <th>Completed On</th>
+                                    <th>Score</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for assignment in completed_assignments %}
+                                <tr>
+                                    <td>{{ assignment.test.title }}</td>
+                                    <td>{{ assignment.end_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        {% if assignment.score is not none %}
+                                            {{ assignment.score }}
+                                        {% else %}
+                                            Not graded yet
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('view_completed_test', assignment_id=assignment.id) }}" class="btn btn-info">View Results</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-center">No completed tests.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2025 KS Classes. All rights reserved.</p>
+    </div>
+</body>
+</html>

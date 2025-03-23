@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Results - KS Classes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <h1 class="brand">KS Classes</h1>
+        <div class="subtitle">Learning Portal</div>
+    </div>
+    
+    <div class="nav-container">
+        <div class="container">
+            <div class="navigation">
+                <a href="{{ url_for('student_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('video_lectures') }}" class="nav-link">Video Lectures</a>
+                <a href="{{ url_for('student_tests') }}" class="nav-link">Tests</a>
+                <a href="{{ url_for('student_fee_payment') }}" class="nav-link">Pay Fees</a>
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                Test Results: {{ assignment.test.title }}
+            </div>
+            <div class="card-body">
+                <div class="test-info">
+                    <p><strong>Test Description:</strong> {{ assignment.test.description }}</p>
+                    <p><strong>Completion Date:</strong> {{ assignment.end_time.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <p><strong>Duration:</strong> 
+                        {% if assignment.start_time and assignment.end_time %}
+                            {% set duration = (assignment.end_time - assignment.start_time).total_seconds() / 60 %}
+                            {{ '%d minutes'|format(duration|int) }}
+                        {% else %}
+                            Not available
+                        {% endif %}
+                    </p>
+                    <p><strong>Score:</strong> 
+                        {% if assignment.score is not none %}
+                            {{ assignment.score }}
+                        {% else %}
+                            Not graded yet
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div class="test-content">
+                    <h3>Test Content</h3>
+                    {% if assignment.test.file_path %}
+                        <p>This test was based on a document file.</p>
+                        <a href="{{ url_for('serve_test_file', filename=assignment.test.file_path) }}" target="_blank" class="btn btn-info">
+                            View Test Document
+                        </a>
+                    {% elif assignment.test.content %}
+                        <div class="test-questions">
+                            <pre style="white-space: pre-wrap;">{{ assignment.test.content }}</pre>
+                        </div>
+                    {% else %}
+                        <p>No test content available.</p>
+                    {% endif %}
+                </div>
+
+                <div class="your-submission mt-3">
+                    <h3>Your Submission</h3>
+                    {% if responses %}
+                        {% for response in responses %}
+                            {% if response.file_path %}
+                                <p>You submitted a file response.</p>
+                                <a href="{{ url_for('serve_response_file', filename=response.file_path) }}" target="_blank" class="btn btn-info">
+                                    View Your Submission
+                                </a>
+                            {% elif response.content %}
+                                <div class="response-content">
+                                    <pre style="white-space: pre-wrap;">{{ response.content }}</pre>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p>No submission data available.</p>
+                    {% endif %}
+                </div>
+
+                <div class="mt-3">
+                    <a href="{{ url_for('student_tests') }}" class="btn btn-secondary">Back to Tests</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2025 KS Classes. All rights reserved.</p>
+    </div>
+</body>
+</html>
