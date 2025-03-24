@@ -193,6 +193,21 @@
                 console.error('Auto-save failed', error);
             });
         }, 30000);
+	// Add server time verification every 60 seconds
+setInterval(function() {
+    // Check with server if test is still valid (if time has expired server-side)
+    fetch('{{ url_for("take_test", assignment_id=assignment.id) }}', {
+        method: 'HEAD'
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        }
+    })
+    .catch(error => {
+        console.error('Server check failed', error);
+    });
+}, 60000);
         {% endif %}
     </script>
 </body>

@@ -360,12 +360,14 @@ def student_tests():
     completed_assignments = TestAssignment.query.filter_by(student_id=student.id, status='Completed').join(Test).all()
     return render_template('student_tests.html', pending_assignments=pending_assignments, in_progress_assignments=in_progress_assignments, completed_assignments=completed_assignments, now=now)
 
+
 @app.route('/take_test/<int:assignment_id>')
 @login_required
 def take_test(assignment_id):
     if current_user.role != 'student':
         flash('Access denied: Admin users should use the admin dashboard', 'danger')
         return redirect(url_for('admin_dashboard'))
+
     student = Student.query.filter_by(user_id=current_user.id).first()
     if not student:
         student = Student.query.filter_by(name=current_user.username).first()
@@ -376,24 +378,60 @@ def take_test(assignment_id):
         else:
             flash('Student profile not found. Please contact your administrator.', 'danger')
             return redirect(url_for('student_dashboard'))
+
     assignment = TestAssignment.query.get_or_404(assignment_id)
     if assignment.student_id != student.id:
         flash('Access denied: This test is not assigned to you.', 'danger')
         return redirect(url_for('student_tests'))
+
+    # Check if the test is already completed
+    if assignment.status == 'Completed':
+        flash('This test has already been completed.', 'info')
+        return redirect(url_for('view_completed_test', assignment_id=assignment.id))
+
     test = Test.query.get(assignment.test_id)
     file_url = url_for('serve_test_file', filename=test.file_path) if test.file_path else None
+
+    # If the test is in progress and timed, check if time expired
+    if assignment.status == 'In Progress' and test.is_timed and assignment.start_time:
+        end_time = assignment.start_time + timedelta(minutes=test.time_limit)
+        if datetime.now() > end_time:
+            # Time has expired, mark as completed
+            assignment.status = 'Completed'
+            assignment.end_time = end_time
+
+            # Get most recent response
+            latest_response = TestResponse.query.filter_by(assignment_id=assignment.id).order_by(
+                TestResponse.timestamp.desc()).first()
+            if latest_response:
+                # Add a note to the response
+                auto_response = TestResponse(
+                    assignment_id=assignment.id,
+                    content=latest_response.content + "\n\n[Note: This test expired while the student was away. The latest saved response has been automatically submitted.]",
+                    timestamp=datetime.now()
+                )
+                db.session.add(auto_response)
+
+            db.session.commit()
+            flash(
+                'Your test time has expired. The test has been automatically submitted with your last saved response.',
+                'warning')
+            return redirect(url_for('student_tests'))
+
     if assignment.status == 'Pending':
         assignment.status = 'In Progress'
         assignment.start_time = datetime.now()
         db.session.commit()
+
     time_remaining = None
     if test.is_timed and assignment.start_time:
         end_time = assignment.start_time + timedelta(minutes=test.time_limit)
         remaining = (end_time - datetime.now()).total_seconds()
         time_remaining = max(0, int(remaining))
-    response = TestResponse.query.filter_by(assignment_id=assignment.id).order_by(TestResponse.id.desc()).first()
-    return render_template('take_test.html', test=test, assignment=assignment, file_url=file_url, test_content=test.content, time_remaining=time_remaining, response=response)
 
+    response = TestResponse.query.filter_by(assignment_id=assignment.id).order_by(TestResponse.id.desc()).first()
+    return render_template('take_test.html', test=test, assignment=assignment, file_url=file_url,
+                           test_content=test.content, time_remaining=time_remaining, response=response)
 
 @app.route('/submit_test/<int:assignment_id>', methods=['POST'])
 @login_required
@@ -410,6 +448,35 @@ def submit_test(assignment_id):
     if assignment.student_id != student.id:
         flash('Access denied: This test is not assigned to you.', 'danger')
         return redirect(url_for('student_tests'))
+
+    # Check if test is already completed
+    if assignment.status == 'Completed':
+        flash('This test has already been submitted.', 'warning')
+        return redirect(url_for('student_tests'))
+
+    # Check if time has expired for timed tests
+    test = Test.query.get(assignment.test_id)
+    if test.is_timed and assignment.start_time:
+        end_time = assignment.start_time + timedelta(minutes=test.time_limit)
+        if datetime.now() > end_time and assignment.status != 'Completed':
+            # Time has expired, mark as completed with current content
+            assignment.status = 'Completed'
+            assignment.end_time = end_time  # Set end time to when it should have ended
+
+            # Add a final response notification
+            response_content = request.form.get('response_content', '')
+            response = TestResponse(
+                assignment_id=assignment.id,
+                content=response_content,
+                timestamp=datetime.now()
+            )
+            response.content += "\n\n[Note: This test was submitted after the time limit expired. The submission time has been recorded as the expiration time.]"
+
+            db.session.add(response)
+            db.session.commit()
+
+            flash('Your test time had expired. The test has been automatically submitted.', 'warning')
+            return redirect(url_for('student_tests'))
 
     is_autosave = request.form.get('autosave') == 'true'
     response_content = request.form.get('response_content', '')
