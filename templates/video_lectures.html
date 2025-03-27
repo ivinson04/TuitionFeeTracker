@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Lectures - KS Classes</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1936562866322214" crossorigin="anonymous"></script>
@@ -89,6 +89,9 @@
             margin-top: 15px;
             padding-top: 15px;
             border-top: 1px solid var(--light-gray);
+        }
+        #youtube_field, #file_field {
+            display: none;
         }
     </style>
 </head>
@@ -194,8 +197,19 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label for="upload_type">Upload Type</label>
+                            <select id="upload_type" name="upload_type" onchange="toggleUploadFields()">
+                                <option value="file">Upload Local File</option>
+                                <option value="youtube">Add YouTube Link</option>
+                            </select>
+                        </div>
+                        <div id="file_field" class="form-group">
                             <label for="video_file">Video File (MP4, WebM, OGG)</label>
-                            <input type="file" id="video_file" name="video_file" accept=".mp4,.webm,.ogg" required>
+                            <input type="file" id="video_file" name="video_file" accept=".mp4,.webm,.ogg">
+                        </div>
+                        <div id="youtube_field" class="form-group">
+                            <label for="youtube_url">YouTube URL</label>
+                            <input type="text" id="youtube_url" name="youtube_url" placeholder="e.g., https://www.youtube.com/watch?v=xyz">
                         </div>
                         <button type="submit" class="btn btn-success">Upload Video</button>
                         <button type="button" onclick="toggleForm('addVideoForm')" class="btn btn-outline">Cancel</button>
@@ -203,145 +217,181 @@
                 </div>
                 {% endif %}
 
-                <!-- Subjects and Chapters Accordion -->
-                {% if subjects %}
-                    <div class="subjects-container">
-                        {% for subject in subjects %}
-                            <div class="accordion">
-                                <div class="accordion-header" onclick="toggleAccordion('subject-{{ subject.id }}')">
-                                    {{ subject.name }}
+<!-- ... (previous parts of the file remain unchanged) ... -->
+
+<!-- Subjects and Chapters Accordion -->
+{% if subjects %}
+    <div class="subjects-container">
+        {% for subject in subjects %}
+            <div class="accordion">
+                <div class="accordion-header" onclick="toggleAccordion('subject-{{ subject.id }}')">
+                    {{ subject.name }}
+                    <span class="toggle-icon">+</span>
+                </div>
+                <div id="subject-{{ subject.id }}" class="accordion-content hidden">
+                    {% if subject.description %}
+                        <p>{{ subject.description }}</p>
+                    {% endif %}
+                    
+                    {% if current_user.role == 'admin' %}
+                        <div class="admin-actions">
+                            <button onclick="showAddChapterForm('{{ subject.id }}')" class="btn btn-outline">Add Chapter</button>
+                            <a href="{{ url_for('delete_subject', subject_id=subject.id) }}" class="btn btn-danger" 
+                               onclick="return confirm('Are you sure you want to delete this subject and ALL its content?')">
+                                Delete Subject
+                            </a>
+                        </div>
+                    {% endif %}
+                    
+                    {% if subject.chapters %}
+                        {% for chapter in subject.chapters %}
+                            <div class="chapter">
+                                <div class="chapter-header" onclick="toggleAccordion('chapter-{{ chapter.id }}')">
+                                    {{ chapter.name }}
                                     <span class="toggle-icon">+</span>
                                 </div>
-                                <div id="subject-{{ subject.id }}" class="accordion-content hidden">
-                                    {% if subject.description %}
-                                        <p>{{ subject.description }}</p>
+                                <div id="chapter-{{ chapter.id }}" class="chapter-content hidden">
+                                    {% if chapter.description %}
+                                        <p>{{ chapter.description }}</p>
                                     {% endif %}
                                     
                                     {% if current_user.role == 'admin' %}
                                         <div class="admin-actions">
-                                            <button onclick="showAddChapterForm('{{ subject.id }}')" class="btn btn-outline">Add Chapter</button>
-                                            <a href="{{ url_for('delete_subject', subject_id=subject.id) }}" class="btn btn-danger" 
-                                               onclick="return confirm('Are you sure you want to delete this subject and ALL its content?')">
-                                                Delete Subject
+                                            <a href="{{ url_for('delete_chapter', chapter_id=chapter.id) }}" class="btn btn-danger" 
+                                               onclick="return confirm('Are you sure you want to delete this chapter and ALL its videos?')">
+                                                Delete Chapter
                                             </a>
                                         </div>
                                     {% endif %}
                                     
-                                    {% if subject.chapters %}
-                                        {% for chapter in subject.chapters %}
-                                            <div class="chapter">
-                                                <div class="chapter-header" onclick="toggleAccordion('chapter-{{ chapter.id }}')">
-                                                    {{ chapter.name }}
-                                                    <span class="toggle-icon">+</span>
-                                                </div>
-                                                <div id="chapter-{{ chapter.id }}" class="chapter-content hidden">
-                                                    {% if chapter.description %}
-                                                        <p>{{ chapter.description }}</p>
-                                                    {% endif %}
-                                                    
-                                                    {% if current_user.role == 'admin' %}
-                                                        <div class="admin-actions">
-                                                            <a href="{{ url_for('delete_chapter', chapter_id=chapter.id) }}" class="btn btn-danger" 
-                                                               onclick="return confirm('Are you sure you want to delete this chapter and ALL its videos?')">
-                                                                Delete Chapter
+                                    {% if chapter.videos %}
+                                        <div class="video-grid">
+                                            {% for video in chapter.videos %}
+                                                <div class="video-card">
+                                                    <div class="video-thumbnail">
+                                                        {% if video.youtube_url %}
+                                                            {% set video_id = '' %}
+                                                            {% if 'youtube.com/watch?v=' in video.youtube_url %}
+                                                                {% set video_id = video.youtube_url.split('v=')[1].split('&')[0] %}
+                                                            {% elif 'youtu.be/' in video.youtube_url %}
+                                                                {% set video_id = video.youtube_url.split('youtu.be/')[1].split('?')[0] %}
+                                                            {% endif %}
+                                                            {% if video_id %}
+                                                                <a href="{{ video.youtube_url }}" target="_blank">
+                                                                    <img src="https://img.youtube.com/vi/{{ video_id }}/0.jpg" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                                                                </a>
+                                                            {% else %}
+                                                                <a href="{{ video.youtube_url }}" target="_blank">
+                                                                    <img src="/api/placeholder/300/180" alt="Invalid YouTube URL" style="width:100%; height:100%; object-fit:cover;">
+                                                                </a>
+                                                            {% endif %}
+                                                        {% else %}
+                                                            <a href="{{ url_for('serve_video', filename=video.filename) }}" target="_blank">
+                                                                <img src="/api/placeholder/300/180" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
                                                             </a>
-                                                        </div>
-                                                    {% endif %}
-                                                    
-                                                    {% if chapter.videos %}
-                                                        <div class="video-grid">
-                                                            {% for video in chapter.videos %}
-                                                                <div class="video-card">
-                                                                    <div class="video-thumbnail">
-                                                                        <a href="{{ url_for('serve_video', filename=video.filename) }}" target="_blank">
-                                                                            <img src="/api/placeholder/300/180" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
-                                                                        </a>
-                                                                    </div>
-                                                                    <div class="video-info">
-                                                                        <h3 class="video-title">{{ video.title }}</h3>
-                                                                        <p class="video-description">{{ video.description }}</p>
-                                                                        <p class="video-date">Added: {{ video.date_added.strftime('%Y-%m-%d') }}</p>
-                                                                        
-                                                                        {% if current_user.role == 'admin' %}
-                                                                            <a href="{{ url_for('delete_video_lecture', lecture_id=video.id) }}" 
-                                                                               class="btn btn-danger btn-sm" 
-                                                                               onclick="return confirm('Are you sure you want to delete this video?')">
-                                                                                Delete
-                                                                            </a>
-                                                                        {% endif %}
-                                                                    </div>
-                                                                </div>
-                                                            {% endfor %}
-                                                        </div>
-                                                    {% else %}
-                                                        <p class="text-center">No videos in this chapter yet.</p>
-                                                    {% endif %}
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="video-info">
+                                                        <h3 class="video-title">{{ video.title }}</h3>
+                                                        <p class="video-description">{{ video.description }}</p>
+                                                        <p class="video-date">Added: {{ video.date_added.strftime('%Y-%m-%d') }}</p>
+                                                        
+                                                        {% if current_user.role == 'admin' %}
+                                                            <a href="{{ url_for('delete_video_lecture', lecture_id=video.id) }}" 
+                                                               class="btn btn-danger btn-sm" 
+                                                               onclick="return confirm('Are you sure you want to delete this video?')">
+                                                                Delete
+                                                            </a>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        {% endfor %}
+                                            {% endfor %}
+                                        </div>
                                     {% else %}
-                                        <p class="text-center">No chapters in this subject yet.</p>
+                                        <p class="text-center">No videos in this chapter yet.</p>
                                     {% endif %}
                                 </div>
                             </div>
                         {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-center">No subjects have been created yet.</p>
-                {% endif %}
+                    {% else %}
+                        <p class="text-center">No chapters in this subject yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-center">No subjects have been created yet.</p>
+{% endif %}
 
-                <!-- Uncategorized Videos Section -->
-                {% if uncategorized_videos %}
-                    <div class="accordion">
-                        <div class="accordion-header" onclick="toggleAccordion('uncategorized-videos')">
-                            Uncategorized Videos
-                            <span class="toggle-icon">+</span>
+<!-- Uncategorized Videos Section -->
+{% if uncategorized_videos %}
+    <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion('uncategorized-videos')">
+            Uncategorized Videos
+            <span class="toggle-icon">+</span>
+        </div>
+        <div id="uncategorized-videos" class="accordion-content hidden">
+            <div class="video-grid">
+                {% for video in uncategorized_videos %}
+                    <div class="video-card">
+                        <div class="video-thumbnail">
+                            {% if video.youtube_url %}
+                                {% set video_id = '' %}
+                                {% if 'youtube.com/watch?v=' in video.youtube_url %}
+                                    {% set video_id = video.youtube_url.split('v=')[1].split('&')[0] %}
+                                {% elif 'youtu.be/' in video.youtube_url %}
+                                    {% set video_id = video.youtube_url.split('youtu.be/')[1].split('?')[0] %}
+                                {% endif %}
+                                {% if video_id %}
+                                    <a href="{{ video.youtube_url }}" target="_blank">
+                                        <img src="https://img.youtube.com/vi/{{ video_id }}/0.jpg" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                                    </a>
+                                {% else %}
+                                    <a href="{{ video.youtube_url }}" target="_blank">
+                                        <img src="/api/placeholder/300/180" alt="Invalid YouTube URL" style="width:100%; height:100%; object-fit:cover;">
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                <a href="{{ url_for('serve_video', filename=video.filename) }}" target="_blank">
+                                    <img src="/api/placeholder/300/180" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                                </a>
+                            {% endif %}
                         </div>
-                        <div id="uncategorized-videos" class="accordion-content hidden">
-                            <div class="video-grid">
-                                {% for video in uncategorized_videos %}
-                                    <div class="video-card">
-                                        <div class="video-thumbnail">
-                                            <a href="{{ url_for('serve_video', filename=video.filename) }}" target="_blank">
-                                                <img src="/api/placeholder/300/180" alt="Video thumbnail" style="width:100%; height:100%; object-fit:cover;">
-                                            </a>
-                                        </div>
-                                        <div class="video-info">
-                                            <h3 class="video-title">{{ video.title }}</h3>
-                                            <p class="video-description">{{ video.description }}</p>
-                                            <p class="video-date">Added: {{ video.date_added.strftime('%Y-%m-%d') }}</p>
-                                            
-                                            {% if current_user.role == 'admin' %}
-                                                <a href="{{ url_for('delete_video_lecture', lecture_id=video.id) }}" 
-                                                   class="btn btn-danger btn-sm" 
-                                                   onclick="return confirm('Are you sure you want to delete this video?')">
-                                                    Delete
-                                                </a>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
+                        <div class="video-info">
+                            <h3 class="video-title">{{ video.title }}</h3>
+                            <p class="video-description">{{ video.description }}</p>
+                            <p class="video-date">Added: {{ video.date_added.strftime('%Y-%m-%d') }}</p>
+                            
+                            {% if current_user.role == 'admin' %}
+                                <a href="{{ url_for('delete_video_lecture', lecture_id=video.id) }}" 
+                                   class="btn btn-danger btn-sm" 
+                                   onclick="return confirm('Are you sure you want to delete this video?')">
+                                    Delete
+                                </a>
+                            {% endif %}
                         </div>
                     </div>
-                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- ... (rest of the file remains unchanged) ... -->
             </div>
         </div>
     </div>
     
     <div class="footer">
-        <p>&copy; 2025 KS Classes. All rights reserved.</p>
+        <p>© 2025 KS Classes. All rights reserved.</p>
     </div>
 
     <script>
         function toggleForm(formId) {
             const form = document.getElementById(formId);
             const forms = document.querySelectorAll('.form-container');
-            
-            // Hide all forms first
             forms.forEach(f => f.classList.add('hidden'));
-            
-            // Show the requested form
             if (form.classList.contains('hidden')) {
                 form.classList.remove('hidden');
             }
@@ -356,7 +406,6 @@
             const content = document.getElementById(id);
             const header = content.previousElementSibling;
             const icon = header.querySelector('.toggle-icon');
-            
             if (content.classList.contains('hidden')) {
                 content.classList.remove('hidden');
                 icon.textContent = '-';
@@ -365,6 +414,28 @@
                 icon.textContent = '+';
             }
         }
+
+        function toggleUploadFields() {
+            const uploadType = document.getElementById('upload_type').value;
+            const fileField = document.getElementById('file_field');
+            const youtubeField = document.getElementById('youtube_field');
+            if (uploadType === 'file') {
+                fileField.style.display = 'block';
+                youtubeField.style.display = 'none';
+                document.getElementById('video_file').required = true;
+                document.getElementById('youtube_url').required = false;
+            } else {
+                fileField.style.display = 'none';
+                youtubeField.style.display = 'block';
+                document.getElementById('video_file').required = false;
+                document.getElementById('youtube_url').required = true;
+            }
+        }
+
+        // Initialize form fields on page load
+        window.onload = function() {
+            toggleUploadFields();
+        };
     </script>
 </body>
 </html>

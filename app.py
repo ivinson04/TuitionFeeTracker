@@ -29,15 +29,13 @@ ALLOWED_EXTENSIONS = {
     'response': {'pdf', 'docx', 'txt', 'jpg', 'jpeg', 'png'}
 }
 
-# Consolidated allowed_file function
 def allowed_file(filename, file_type='test'):
-    """Check if a file has an allowed extension for the given file_type."""
     if not filename or '.' not in filename:
         return False
     extension = filename.rsplit('.', 1)[1].lower()
     return extension in ALLOWED_EXTENSIONS.get(file_type, set())
 
-# User model for authentication
+# User model
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -87,12 +85,13 @@ class Chapter(db.Model):
     date_created = db.Column(db.DateTime, default=datetime.utcnow)
     videos = db.relationship('VideoLecture', backref='chapter', lazy=True, cascade='all, delete-orphan')
 
-# VideoLecture model
+# VideoLecture model (updated to include youtube_url)
 class VideoLecture(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    filename = db.Column(db.String(255), nullable=False)
+    filename = db.Column(db.String(255), nullable=True)  # For local files
+    youtube_url = db.Column(db.String(255), nullable=True)  # For YouTube links
     date_added = db.Column(db.DateTime, default=datetime.utcnow)
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
@@ -142,7 +141,6 @@ app.config['VIDEO_FOLDER'] = VIDEO_FOLDER
 app.config['MAX_TEST_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB for tests
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB for videos
 
-# Ensure directories exist
 for folder in [UPLOAD_FOLDER, TEST_RESPONSE_FOLDER, VIDEO_FOLDER]:
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -652,12 +650,6 @@ def approved_payments():
     approved_payments = Payment.query.filter_by(status='Approved').all()
     return render_template('approved_payments.html', payments=approved_payments)
 
-@app.route('/video_lectures')
-@login_required
-def video_lectures():
-    subjects = Subject.query.order_by(Subject.name).all()
-    uncategorized_videos = VideoLecture.query.filter_by(chapter_id=None).order_by(VideoLecture.date_added.desc()).all()
-    return render_template('video_lectures.html', subjects=subjects, uncategorized_videos=uncategorized_videos)
 
 @app.route('/add_subject', methods=['POST'])
 @login_required
@@ -723,34 +715,72 @@ def delete_chapter(chapter_id):
     flash(f'Chapter "{chapter.name}" and all its videos deleted successfully!', 'success')
     return redirect(url_for('video_lectures'))
 
+@app.route('/video_lectures')
+@login_required
+def video_lectures():
+    subjects = Subject.query.order_by(Subject.name).all()
+    uncategorized_videos = VideoLecture.query.filter_by(chapter_id=None).order_by(VideoLecture.date_added.desc()).all()
+    return render_template('video_lectures.html', subjects=subjects, uncategorized_videos=uncategorized_videos)
+
+
 @app.route('/add_video_lecture', methods=['POST'])
 @login_required
 def add_video_lecture():
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
+
     title = request.form['title']
     description = request.form['description']
     chapter_id = request.form.get('chapter_id')
+    upload_type = request.form.get('upload_type')
+
     if chapter_id == "":
         chapter_id = None
-    if 'video_file' not in request.files:
-        flash('No file part', 'danger')
-        return redirect(url_for('video_lectures'))
-    file = request.files['video_file']
-    if file.filename == '':
-        flash('No selected file', 'danger')
-        return redirect(url_for('video_lectures'))
-    if file and allowed_file(file.filename, 'video'):
-        filename = secure_filename(file.filename)
-        unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
-        file.save(os.path.join(app.config['VIDEO_FOLDER'], unique_filename))
-        new_lecture = VideoLecture(title=title, description=description, filename=unique_filename, admin_id=current_user.id, chapter_id=chapter_id)
-        db.session.add(new_lecture)
-        db.session.commit()
-        flash('Video lecture added successfully!', 'success')
+
+    if upload_type == 'file':
+        if 'video_file' not in request.files:
+            flash('No file part', 'danger')
+            return redirect(url_for('video_lectures'))
+        file = request.files['video_file']
+        if file.filename == '':
+            flash('No selected file', 'danger')
+            return redirect(url_for('video_lectures'))
+        if file and allowed_file(file.filename, 'video'):
+            filename = secure_filename(file.filename)
+            unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
+            file.save(os.path.join(app.config['VIDEO_FOLDER'], unique_filename))
+            new_lecture = VideoLecture(
+                title=title,
+                description=description,
+                filename=unique_filename,
+                youtube_url=None,
+                admin_id=current_user.id,
+                chapter_id=chapter_id
+            )
+        else:
+            flash('Invalid file type. Only MP4, WebM, and OGG files are allowed.', 'danger')
+            return redirect(url_for('video_lectures'))
+    elif upload_type == 'youtube':
+        youtube_url = request.form.get('youtube_url')
+        if not youtube_url or not ('youtube.com' in youtube_url or 'youtu.be' in youtube_url):
+            flash('Invalid YouTube URL', 'danger')
+            return redirect(url_for('video_lectures'))
+        new_lecture = VideoLecture(
+            title=title,
+            description=description,
+            filename=None,
+            youtube_url=youtube_url,
+            admin_id=current_user.id,
+            chapter_id=chapter_id
+        )
     else:
-        flash('Invalid file type. Only MP4, WebM, and OGG files are allowed.', 'danger')
+        flash('Invalid upload type', 'danger')
+        return redirect(url_for('video_lectures'))
+
+    db.session.add(new_lecture)
+    db.session.commit()
+    flash('Video lecture added successfully!', 'success')
     return redirect(url_for('video_lectures'))
 
 @app.route('/delete_video_lecture/<int:lecture_id>')
@@ -760,10 +790,11 @@ def delete_video_lecture(lecture_id):
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
     lecture = VideoLecture.query.get_or_404(lecture_id)
-    try:
-        os.remove(os.path.join(app.config['VIDEO_FOLDER'], lecture.filename))
-    except:
-        flash('Warning: Could not delete the video file from server', 'warning')
+    if lecture.filename:  # Delete local file if it exists
+        try:
+            os.remove(os.path.join(app.config['VIDEO_FOLDER'], lecture.filename))
+        except:
+            flash('Warning: Could not delete the video file from server', 'warning')
     db.session.delete(lecture)
     db.session.commit()
     flash('Video lecture deleted successfully!', 'success')

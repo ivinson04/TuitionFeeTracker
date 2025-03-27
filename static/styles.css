@@ -1115,4 +1115,23 @@ label {
   color: #8ab0d1;
   opacity: 0.7;
 }
+.radio-group {
+    margin: 10px 0;
+}
 
+.radio-group label {
+    margin-right: 15px;
+}
+.search-form {
+    margin-bottom: 20px;
+}
+
+.search-form .form-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.search-form input[type="text"] {
+    flex-grow: 1;
+}
