@@ -1,13 +1,18 @@
 import os
 import mammoth
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify, abort
-from flask_sqlalchemy import SQLAlchemy
 from PyPDF2 import PdfReader
 from werkzeug.utils import secure_filename
 import io
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+
+# Import models and db from models.py
+from models import db, User, Student, Payment, Announcement, Subject, Chapter, VideoLecture, Test, TestAssignment, TestResponse, init_app
+
+# Import the fee reminder function
+from fee_reminder import check_pending_fees
 
 # Ensure instance folder exists
 if not os.path.exists('instance'):
@@ -17,7 +22,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 
-db = SQLAlchemy(app)
+# Initialize database with app
+init_app(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -35,102 +42,6 @@ def allowed_file(filename, file_type='test'):
     extension = filename.rsplit('.', 1)[1].lower()
     return extension in ALLOWED_EXTENSIONS.get(file_type, set())
 
-# User model
-class User(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default='student')
-    is_admin = db.Column(db.Boolean, default=False)
-
-# Student model
-class Student(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    payments = db.relationship('Payment', backref='student', lazy=True, cascade='all, delete-orphan')
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-
-# Payment model
-class Payment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(50), default='Pending')
-
-# Announcement model
-class Announcement(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(150), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    date_posted = db.Column(db.DateTime, default=datetime.utcnow)
-    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-
-# Subject model
-class Subject(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    date_created = db.Column(db.DateTime, default=datetime.utcnow)
-    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    chapters = db.relationship('Chapter', backref='subject', lazy=True, cascade='all, delete-orphan')
-
-# Chapter model
-class Chapter(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    subject_id = db.Column(db.Integer, db.ForeignKey('subject.id'), nullable=False)
-    date_created = db.Column(db.DateTime, default=datetime.utcnow)
-    videos = db.relationship('VideoLecture', backref='chapter', lazy=True, cascade='all, delete-orphan')
-
-# VideoLecture model (updated to include youtube_url)
-class VideoLecture(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    filename = db.Column(db.String(255), nullable=True)  # For local files
-    youtube_url = db.Column(db.String(255), nullable=True)  # For YouTube links
-    date_added = db.Column(db.DateTime, default=datetime.utcnow)
-    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    chapter_id = db.Column(db.Integer, db.ForeignKey('chapter.id'), nullable=True)
-
-# Test model
-class Test(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text)
-    is_timed = db.Column(db.Boolean, default=False)
-    time_limit = db.Column(db.Integer)
-    content = db.Column(db.Text)
-    file_path = db.Column(db.String(255))
-    date_created = db.Column(db.DateTime, default=datetime.now)
-    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    assignments = db.relationship('TestAssignment', backref='test', lazy=True, cascade="all, delete-orphan")
-
-# Test Assignment model
-class TestAssignment(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    test_id = db.Column(db.Integer, db.ForeignKey('test.id'), nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
-    status = db.Column(db.String(20), default='Pending')
-    date_assigned = db.Column(db.DateTime, default=datetime.now)
-    start_time = db.Column(db.DateTime)
-    end_time = db.Column(db.DateTime)
-    score = db.Column(db.Float)
-    due_date = db.Column(db.DateTime)
-    responses = db.relationship('TestResponse', backref='assignment', lazy=True, cascade="all, delete-orphan")
-    student = db.relationship('Student')
-
-# Test Response model
-class TestResponse(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    assignment_id = db.Column(db.Integer, db.ForeignKey('test_assignment.id'), nullable=False)
-    content = db.Column(db.Text)
-    file_path = db.Column(db.String(255))
-    timestamp = db.Column(db.DateTime, default=datetime.now)
-
 # File upload configurations
 UPLOAD_FOLDER = 'uploads'
 TEST_RESPONSE_FOLDER = 'static/test_responses'
@@ -147,9 +58,22 @@ for folder in [UPLOAD_FOLDER, TEST_RESPONSE_FOLDER, VIDEO_FOLDER]:
 os.makedirs(os.path.join(UPLOAD_FOLDER, 'tests'), exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_FOLDER, 'responses'), exist_ok=True)
 
+
+@app.context_processor
+def utility_processor():
+    def now():
+        return datetime.now()
+
+    return dict(now=now)
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.before_request
+def before_request():
+    if request.endpoint == 'student_dashboard':
+        check_pending_fees()
 
 @app.route('/')
 @login_required
@@ -804,6 +728,8 @@ def delete_video_lecture(lecture_id):
 @login_required
 def serve_video(filename):
     return send_from_directory(app.config['VIDEO_FOLDER'], filename)
+
+
 
 if __name__ == '__main__':
     with app.app_context():
