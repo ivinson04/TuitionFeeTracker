@@ -520,13 +520,18 @@ def delete_student(student_id):
     if current_user.role != 'admin':
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
-    student = Student.query.get_or_404(student_id)
-    user = User.query.filter_by(username=student.name, role='student').first()
-    if user:
-        db.session.delete(user)
-    db.session.delete(student)
-    db.session.commit()
-    flash(f'Student "{student.name}" deleted successfully!', 'success')
+    try:
+        student = Student.query.get_or_404(student_id)
+        user = User.query.filter_by(username=student.name, role='student').first()
+        # Delete student first to handle cascades
+        db.session.delete(student)
+        if user and user.id != current_user.id:  # Prevent self-deletion
+            db.session.delete(user)
+        db.session.commit()
+        flash(f'Student "{student.name}" deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting student: {str(e)}', 'danger')
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/pay_fee/<int:student_id>', methods=['POST'])
