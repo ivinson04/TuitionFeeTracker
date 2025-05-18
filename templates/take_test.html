@@ -3,8 +3,7 @@
 <head>
   <title>Learning Portal</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     .mic-button {
       background-color: #4CAF50;
@@ -14,9 +13,11 @@
       border-radius: 4px;
       cursor: pointer;
       margin-left: 10px;
+      margin-top: 10px;
       font-size: 16px;
-      display: inline-block !important; /* Ensure visibility */
+      display: inline-block !important;
       visibility: visible !important;
+      z-index: 1000;
     }
     .mic-button.recording {
       background-color: #ff4444;
@@ -25,43 +26,44 @@
       background-color: #cccccc;
       cursor: not-allowed;
     }
-    @media screen and (max-width: 600px) {
-      .mic-button {
-        margin-top: 10px; /* Space on small screens */
-        width: auto;
-        min-width: 120px; /* Ensure button is clickable */
-      }
+    .mic-container {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
     }
     .mic-status {
       color: red;
       margin-left: 10px;
       font-size: 14px;
     }
-    #timer {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-    #timer.warning {
-            color: orange;
-        }
-    #timer.danger {
-            color: red;
-            animation: blink 1s linear infinite;
-        }
-    @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
     .test-content {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #dee2e6;
-            margin-bottom: 20px;
-        }
+      white-space: pre-wrap; /* Preserve line breaks and spaces */
+      font-family: monospace; /* Improve readability */
+      font-size: 16px;
+      line-height: 1.5;
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    @media screen and (max-width: 768px) {
+      .mic-button {
+        margin-top: 10px;
+        width: auto;
+        min-width: 140px;
+        font-size: 14px;
+      }
+      .mic-container {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .test-content {
+        font-size: 14px;
+        padding: 8px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -107,7 +109,7 @@
       <h2>Test Questions</h2>
       <div class="card">
         {% if test_content %}
-        <div>{{ test_content | safe }}</div>
+        <div class="test-content">{{ test_content | safe }}</div>
         {% else %}
         <p>No test content available. Please contact your instructor.</p>
         {% endif %}
@@ -120,8 +122,10 @@
         <form method="POST" action="{{ url_for('submit_test', assignment_id=assignment.id) }}">
           <label for="content">Your Answer:</label><br>
           <textarea name="content" id="content" rows="10" cols="100">{{ response.content if response and response.content else '' }}</textarea>
-          <button type="button" id="micButton" class="mic-button">🎙️ Start Recording</button>
-          <span id="micStatus" class="mic-status"></span><br>
+          <div class="mic-container">
+            <button type="button" id="micButton" class="mic-button">🎙️ Start Recording</button>
+            <span id="micStatus" class="mic-status"></span>
+          </div>
           <input type="submit" name="submit_button" value="Submit Test">
           <input type="submit" name="submit_button" value="Save and Exit">
         </form>
@@ -170,20 +174,18 @@
     const micButton = document.getElementById('micButton');
     const answerTextarea = document.getElementById('content');
     const micStatus = document.getElementById('micStatus');
-    let recognition = null;
-    let isRecording = false;
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = 'en-US'; // Adjust as needed (e.g., 'hi-IN' for Hindi)
-      recognition.interimResults = false; // Disable interim results to avoid duplicates
-      recognition.continuous = false; // Single recognition session per start
+      recognition.interimResults = false;
+      recognition.continuous = false;
 
       recognition.onresult = function(event) {
         if (event.results.length > 0) {
           const transcript = event.results[0][0].transcript;
-          // Append transcript to existing content
           answerTextarea.value = answerTextarea.value + (answerTextarea.value ? ' ' : '') + transcript;
+          micStatus.textContent = 'Transcription added';
         }
       };
 
@@ -191,33 +193,32 @@
         console.error('Speech recognition error:', event.error);
         micButton.textContent = '🎙️ Start Recording';
         micButton.classList.remove('recording');
-        isRecording = false;
         micStatus.textContent = 'Error: ' + event.error;
       };
 
       recognition.onend = function() {
         micButton.textContent = '🎙️ Start Recording';
         micButton.classList.remove('recording');
-        isRecording = false;
         micStatus.textContent = '';
       };
 
       micButton.onclick = function() {
-        if (!isRecording) {
+        if (!micButton.classList.contains('recording')) {
           try {
             recognition.start();
             micButton.textContent = '🎙️ Stop Recording';
             micButton.classList.add('recording');
-            isRecording = true;
             micStatus.textContent = 'Recording...';
           } catch (e) {
             micStatus.textContent = 'Error starting mic: ' + e.message;
           }
         } else {
           recognition.stop();
-          // onend handler will update button state
         }
       };
+
+      // Log browser support
+      micStatus.textContent = 'Speech recognition supported';
     } else {
       micButton.disabled = true;
       micButton.textContent = '🎙️ Mic Not Supported';
