@@ -1,214 +1,228 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Take Test</title>
+  <title>Learning Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        #timer {
+  <style>
+    .mic-button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+      font-size: 16px;
+      display: inline-block !important; /* Ensure visibility */
+      visibility: visible !important;
+    }
+    .mic-button.recording {
+      background-color: #ff4444;
+    }
+    .mic-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    @media screen and (max-width: 600px) {
+      .mic-button {
+        margin-top: 10px; /* Space on small screens */
+        width: auto;
+        min-width: 120px; /* Ensure button is clickable */
+      }
+    }
+    .mic-status {
+      color: red;
+      margin-left: 10px;
+      font-size: 14px;
+    }
+    #timer {
             font-size: 1.5rem;
             font-weight: bold;
             text-align: center;
             margin-bottom: 15px;
         }
-        #timer.warning {
+    #timer.warning {
             color: orange;
         }
-        #timer.danger {
+    #timer.danger {
             color: red;
             animation: blink 1s linear infinite;
         }
-        @keyframes blink {
+    @keyframes blink {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
-        .test-content {
+    .test-content {
             background-color: #f8f9fa;
             padding: 15px;
             border-radius: 5px;
             border: 1px solid #dee2e6;
             margin-bottom: 20px;
         }
-    </style>
+  </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="#">Learning Portal</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('student_dashboard') }}">Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('video_lectures') }}">Video Lectures</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('student_tests') }}">Tests</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
-                </li>
-            </ul>
-        </div>
+  <header>
+    <nav>
+      <ul>
+        <li><a href="{{ url_for('student_dashboard') }}">Dashboard</a></li>
+        <li><a href="{{ url_for('video_lectures') }}">Video Lectures</a></li>
+        <li><a href="{{ url_for('student_tests') }}">Tests</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+      </ul>
     </nav>
+  </header>
 
-    <div class="container mt-4">
-        <h1>{{ test.title }}</h1>
-        
+  <main>
+    <h1>{{ test.title }}</h1>
+
+    {% if test.is_timed %}
+    <p>Time Remaining: <span id="time-remaining">--:--:--</span></p>
+    {% endif %}
+
+    <section>
+      <h2>Test Instructions</h2>
+      <div class="card">
+        <p><strong>Description:</strong> {{ test.description }}</p>
+        <p><strong>Type:</strong> {{ 'Timed' if test.is_timed else 'Untimed' }}</p>
         {% if test.is_timed %}
-        <div id="timer" class="alert alert-info">
-            Time Remaining: <span id="time-display">--:--:--</span>
-        </div>
+        <p><strong>Time Limit:</strong> {{ test.time_limit }} minutes</p>
         {% endif %}
-        
-        <div class="card mb-4">
-            <div class="card-header">
-                <h3>Test Instructions</h3>
-            </div>
-            <div class="card-body">
-                <p><strong>Description:</strong> {{ test.description }}</p>
-                <p><strong>Type:</strong> {{ 'Timed' if test.is_timed else 'Untimed' }}</p>
-                {% if test.is_timed %}
-                <p><strong>Time Limit:</strong> {{ test.time_limit }} minutes</p>
-                {% endif %}
-                
-                <div class="alert alert-warning">
-                    <ul>
-                        <li>Read all questions carefully before answering.</li>
-                        <li>Type your answers in the text area provided below.</li>
-                        {% if test.is_timed %}
-                        <li>The test will automatically submit when the time runs out.</li>
-                        <li>Do not leave or refresh the page during the test.</li>
-                        <li>Your work is automatically saved every 30 seconds.</li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card mb-4">
-            <div class="card-header">
-                <h3>Test Questions</h3>
-            </div>
-            <div class="card-body">
-                {% if test_content %}
-                <div class="test-content">
-                    <pre style="white-space: pre-wrap;">{{ test_content }}</pre>
-                </div>
-                {% else %}
-                <div class="alert alert-danger">
-                    No test content available. Please contact your instructor.
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        
-        <div class="card mb-4">
-            <div class="card-header">
-                <h3>Your Response</h3>
-            </div>
-            <div class="card-body">
-                <form id="test-form" action="{{ url_for('submit_test', assignment_id=assignment.id) }}" method="post">
-                    <div class="form-group">
-                        <label for="response_content">Your Answer</label>
-                        <textarea class="form-control" id="response_content" name="response_content" rows="15">{{ response.content if response and response.content else '' }}</textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-primary btn-lg">Submit Test</button>
-                        <a href="{{ url_for('student_tests') }}" class="btn btn-secondary">Save and Exit</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+        <ul>
+          <li>Read all questions carefully before answering.</li>
+          <li>Type or speak your answers in the text area provided below.</li>
+          {% if test.is_timed %}
+          <li>The test will automatically submit when the time runs out.</li>
+          <li>Do not leave or refresh the page during the test.</li>
+          <li>Your work is automatically saved every 30 seconds.</li>
+          {% endif %}
+        </ul>
+      </div>
+    </section>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    
-    <script>
-        {% if test.is_timed and time_remaining is not none %}
-        // Timer functionality for timed tests
-        let timeRemaining = {{ time_remaining }};
-        const timerElement = document.getElementById('timer');
-        const timeDisplay = document.getElementById('time-display');
-        const testForm = document.getElementById('test-form');
-        
-        function updateTimer() {
-            if (timeRemaining <= 0) {
-                // Time's up - submit the form
-                clearInterval(timerInterval);
-                timeDisplay.textContent = "00:00:00";
-                timerElement.classList.add('danger');
-                alert("Time's up! Your test is being submitted automatically.");
-                testForm.submit();
-                return;
-            }
-            
-            // Calculate hours, minutes, seconds
-            const hours = Math.floor(timeRemaining / 3600);
-            const minutes = Math.floor((timeRemaining % 3600) / 60);
-            const seconds = timeRemaining % 60;
-            
-            // Format time display
-            timeDisplay.textContent = 
-                (hours < 10 ? "0" + hours : hours) + ":" + 
-                (minutes < 10 ? "0" + minutes : minutes) + ":" + 
-                (seconds < 10 ? "0" + seconds : seconds);
-            
-            // Add warning classes as time gets low
-            if (timeRemaining <= 300) { // 5 minutes
-                timerElement.classList.add('danger');
-                timerElement.classList.remove('warning');
-            } else if (timeRemaining <= 600) { // 10 minutes
-                timerElement.classList.add('warning');
-            }
-            
-            timeRemaining--;
-        }
-        
-        // Initialize timer
-        updateTimer();
-        const timerInterval = setInterval(updateTimer, 1000);
-        
-        // Auto-save functionality (every 30 seconds)
-        setInterval(function() {
-            // Use fetch API to save current progress without page reload
-            const formData = new FormData(testForm);
-            formData.append('autosave', 'true');
-            
-            fetch(testForm.action, {
-                method: 'POST',
-                body: formData
-            }).then(response => {
-                console.log('Auto-saved');
-            }).catch(error => {
-                console.error('Auto-save failed', error);
-            });
-        }, 30000);
-	// Add server time verification every 60 seconds
-setInterval(function() {
-    // Check with server if test is still valid (if time has expired server-side)
-    fetch('{{ url_for("take_test", assignment_id=assignment.id) }}', {
-        method: 'HEAD'
-    })
-    .then(response => {
-        if (response.redirected) {
-            window.location.href = response.url;
-        }
-    })
-    .catch(error => {
-        console.error('Server check failed', error);
-    });
-}, 60000);
+    <section>
+      <h2>Test Questions</h2>
+      <div class="card">
+        {% if test_content %}
+        <div>{{ test_content | safe }}</div>
+        {% else %}
+        <p>No test content available. Please contact your instructor.</p>
         {% endif %}
-    </script>
+      </div>
+    </section>
+
+    <section>
+      <h2>Your Response</h2>
+      <div class="card">
+        <form method="POST" action="{{ url_for('submit_test', assignment_id=assignment.id) }}">
+          <label for="content">Your Answer:</label><br>
+          <textarea name="content" id="content" rows="10" cols="100">{{ response.content if response and response.content else '' }}</textarea>
+          <button type="button" id="micButton" class="mic-button">🎙️ Start Recording</button>
+          <span id="micStatus" class="mic-status"></span><br>
+          <input type="submit" name="submit_button" value="Submit Test">
+          <input type="submit" name="submit_button" value="Save and Exit">
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Timer script for timed tests
+    {% if test.is_timed and time_remaining %}
+    let timeRemaining = {{ time_remaining }};
+    const timeDisplay = document.getElementById('time-remaining');
+    function updateTimer() {
+      if (timeRemaining <= 0) {
+        document.forms[0].submit();
+        return;
+      }
+      let hours = Math.floor(timeRemaining / 3600);
+      let minutes = Math.floor((timeRemaining % 3600) / 60);
+      let seconds = timeRemaining % 60;
+      timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      timeRemaining--;
+    }
+    setInterval(updateTimer, 1000);
+    {% endif %}
+
+    // Autosave script
+    document.addEventListener('DOMContentLoaded', function() {
+      const textarea = document.getElementById('content');
+      let lastContent = textarea.value;
+      setInterval(function() {
+        if (textarea.value !== lastContent) {
+          lastContent = textarea.value;
+          fetch('{{ url_for('submit_test', assignment_id=assignment.id) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `response_content=${encodeURIComponent(textarea.value)}&autosave=true`
+          }).then(response => response.json()).then(data => {
+            console.log(data.message);
+          });
+        }
+      }, 30000);
+    });
+
+    // Speech-to-text script
+    const micButton = document.getElementById('micButton');
+    const answerTextarea = document.getElementById('content');
+    const micStatus = document.getElementById('micStatus');
+    let recognition = null;
+    let isRecording = false;
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US'; // Adjust as needed (e.g., 'hi-IN' for Hindi)
+      recognition.interimResults = false; // Disable interim results to avoid duplicates
+      recognition.continuous = false; // Single recognition session per start
+
+      recognition.onresult = function(event) {
+        if (event.results.length > 0) {
+          const transcript = event.results[0][0].transcript;
+          // Append transcript to existing content
+          answerTextarea.value = answerTextarea.value + (answerTextarea.value ? ' ' : '') + transcript;
+        }
+      };
+
+      recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        micButton.textContent = '🎙️ Start Recording';
+        micButton.classList.remove('recording');
+        isRecording = false;
+        micStatus.textContent = 'Error: ' + event.error;
+      };
+
+      recognition.onend = function() {
+        micButton.textContent = '🎙️ Start Recording';
+        micButton.classList.remove('recording');
+        isRecording = false;
+        micStatus.textContent = '';
+      };
+
+      micButton.onclick = function() {
+        if (!isRecording) {
+          try {
+            recognition.start();
+            micButton.textContent = '🎙️ Stop Recording';
+            micButton.classList.add('recording');
+            isRecording = true;
+            micStatus.textContent = 'Recording...';
+          } catch (e) {
+            micStatus.textContent = 'Error starting mic: ' + e.message;
+          }
+        } else {
+          recognition.stop();
+          // onend handler will update button state
+        }
+      };
+    } else {
+      micButton.disabled = true;
+      micButton.textContent = '🎙️ Mic Not Supported';
+      micStatus.textContent = 'Speech recognition not supported in this browser';
+    }
+  </script>
 </body>
 </html>
