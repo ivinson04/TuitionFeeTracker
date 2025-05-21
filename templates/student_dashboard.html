@@ -61,16 +61,13 @@
         <div class="subtitle">Tuition Fee Tracker</div>
     </div>
     
-    <div class="nav-container">
-        <div class="container">
-            <div class="navigation">
+    <div class="navigation">
                 <a href="{{ url_for('student_dashboard') }}" class="nav-link">Dashboard</a>
                 <a href="{{ url_for('video_lectures') }}" class="nav-link">Video Lectures</a>
                 <a href="{{ url_for('student_tests') }}" class="nav-link">Tests</a>
+                <a href="{{ url_for('leaderboard') }}" class="nav-link">Leaderboard</a>
                 <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
             </div>
-        </div>
-    </div>
 
     <div class="container">
         <!-- Flash messages for fee reminders and other alerts -->

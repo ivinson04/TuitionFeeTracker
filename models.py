@@ -1,4 +1,3 @@
-import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -24,6 +23,7 @@ class Student(db.Model):
     teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     payments = db.relationship('Payment', backref='student', lazy=True, cascade='all, delete-orphan')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    class_level = db.Column(db.String(20), nullable=True)  # Added class_level field
 
 
 # Payment model

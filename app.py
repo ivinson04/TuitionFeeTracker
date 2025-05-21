@@ -508,7 +508,8 @@ def add_student():
         flash('Unauthorized access', 'danger')
         return redirect(url_for('home'))
     name = request.form['name']
-    new_student = Student(name=name, teacher_id=current_user.id)
+    class_level = request.form['class_level']
+    new_student = Student(name=name, teacher_id=current_user.id, class_level=class_level)
     db.session.add(new_student)
     db.session.commit()
     flash('Student added successfully!', 'success')
@@ -737,6 +738,51 @@ def delete_video_lecture(lecture_id):
 @login_required
 def serve_video(filename):
     return send_from_directory(app.config['VIDEO_FOLDER'], filename)
+
+
+@app.route('/leaderboard')
+@login_required
+def leaderboard():
+    # Get all class levels with students
+    class_levels = db.session.query(Student.class_level).filter(Student.class_level != None).distinct().all()
+    class_levels = [c[0] for c in class_levels]
+
+    leaderboards = {}
+
+    for class_level in class_levels:
+        # Get students in this class level
+        students = Student.query.filter_by(class_level=class_level).all()
+        student_ids = [student.id for student in students]
+
+        # Find latest test with completed assignments for this class
+        latest_test = None
+        test_assignments = []
+
+        # Query to find tests assigned to students in this class
+        tests_for_class = db.session.query(Test) \
+            .join(TestAssignment) \
+            .filter(TestAssignment.student_id.in_(student_ids), TestAssignment.status == 'Completed') \
+            .order_by(Test.date_created.desc()) \
+            .all()
+
+        if tests_for_class:
+            latest_test = tests_for_class[0]
+
+            # Get all completed assignments for this test with scores
+            test_assignments = TestAssignment.query \
+                .filter(TestAssignment.test_id == latest_test.id,
+                        TestAssignment.student_id.in_(student_ids),
+                        TestAssignment.status == 'Completed',
+                        TestAssignment.score != None) \
+                .order_by(TestAssignment.score.desc()) \
+                .all()
+
+        leaderboards[class_level] = {
+            'test': latest_test,
+            'assignments': test_assignments
+        }
+
+    return render_template('leaderboard.html', leaderboards=leaderboards)
 
 
 
