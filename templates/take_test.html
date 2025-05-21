@@ -35,7 +35,10 @@
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      margin-top: 10px;
+      margin-top: 20px;
+      margin-bottom: 30px; /* Added more space below mic section */
+      padding: 10px;
+      border-top: 1px solid #eee;
     }
     .mic-status {
       color: red;
@@ -53,6 +56,69 @@
       border: 1px solid #ddd;
       border-radius: 4px;
     }
+    .submission-controls {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+    }
+    .submit-button {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .save-button {
+      background-color: #6c757d;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .modal-buttons {
+      margin-top: 20px;
+    }
+    .modal-confirm {
+      background-color: #dc3545;
+      color: white;
+      padding: 8px 16px;
+      margin-right: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .modal-cancel {
+      background-color: #6c757d;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
     @media screen and (max-width: 768px) {
       .mic-button {
         margin-top: 10px;
@@ -63,6 +129,7 @@
       .mic-container {
         flex-direction: column;
         align-items: flex-start;
+        margin-bottom: 20px;
       }
       .test-content {
         font-size: 14px;
@@ -124,19 +191,35 @@
     <section>
       <h2>Your Response</h2>
       <div class="card">
-        <form method="POST" action="{{ url_for('submit_test', assignment_id=assignment.id) }}">
+        <form id="testForm" method="POST" action="{{ url_for('submit_test', assignment_id=assignment.id) }}">
           <label for="content">Your Answer:</label><br>
-          <textarea name="content" id="content" rows="10" cols="100">{{ response.content if response and response.content else '' }}</textarea>
+          <textarea name="response_content" id="content" rows="10" cols="100">{{ response.content if response and response.content else '' }}</textarea>
+          
           <div class="mic-container">
             <button type="button" id="micButton" class="mic-button">🎙️ Start Recording</button>
             <span id="micStatus" class="mic-status"></span>
           </div>
-          <input type="submit" name="submit_button" value="Submit Test">
-          <input type="submit" name="submit_button" value="Save and Exit">
+          
+          <div class="submission-controls">
+            <button type="button" id="submitButton" class="submit-button">Submit Test</button>
+            <button type="button" id="saveButton" class="save-button">Save and Exit</button>
+          </div>
         </form>
       </div>
     </section>
   </main>
+
+  <!-- Confirm submission modal -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-content">
+      <h3>Confirm Test Submission</h3>
+      <p>Are you sure you want to submit your test? This action cannot be undone.</p>
+      <div class="modal-buttons">
+        <button id="confirmSubmit" class="modal-confirm">Yes, Submit Test</button>
+        <button id="cancelSubmit" class="modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // Timer script for timed tests
@@ -145,7 +228,7 @@
     const timeDisplay = document.getElementById('time-remaining');
     function updateTimer() {
       if (timeRemaining <= 0) {
-        document.forms[0].submit();
+        document.getElementById('testForm').submit();
         return;
       }
       let hours = Math.floor(timeRemaining / 3600);
@@ -228,6 +311,47 @@
       micButton.disabled = true;
       micButton.textContent = '🎙️ Mic Not Supported';
       micStatus.textContent = 'Speech recognition not supported in this browser';
+    }
+    
+    // Confirmation modal setup
+    const modal = document.getElementById('confirmModal');
+    const submitBtn = document.getElementById('submitButton');
+    const saveBtn = document.getElementById('saveButton');
+    const confirmBtn = document.getElementById('confirmSubmit');
+    const cancelBtn = document.getElementById('cancelSubmit');
+    const form = document.getElementById('testForm');
+    
+    submitBtn.onclick = function() {
+      modal.style.display = "block";
+    }
+    
+    cancelBtn.onclick = function() {
+      modal.style.display = "none";
+    }
+    
+    // Close modal if clicked outside
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+    
+    confirmBtn.onclick = function() {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'submit_button';
+      input.value = 'Submit Test';
+      form.appendChild(input);
+      form.submit();
+    }
+    
+    saveBtn.onclick = function() {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'submit_button';
+      input.value = 'Save and Exit';
+      form.appendChild(input);
+      form.submit();
     }
   </script>
 </body>
