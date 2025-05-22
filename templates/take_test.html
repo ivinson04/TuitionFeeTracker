@@ -4,82 +4,459 @@
   <title>Learning Portal</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Font Awesome for icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-
-<!-- Dark mode JavaScript -->
-<script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
   <style>
-    .mic-button {
-      background-color: #4CAF50;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+      overflow-x: hidden;
+    }
+
+    /* Animated background particles */
+    .bg-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(180deg); }
+    }
+
+    /* Header */
+    header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    nav ul {
+      display: flex;
+      list-style: none;
+      justify-content: center;
+      padding: 1rem 0;
+      margin: 0;
+    }
+
+    nav li {
+      margin: 0 1rem;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: #667eea;
+      font-weight: 500;
+      padding: 0.75rem 1.5rem;
+      border-radius: 25px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    nav a::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+      transition: left 0.5s;
+    }
+
+    nav a:hover::before {
+      left: 100%;
+    }
+
+    nav a:hover {
+      background: linear-gradient(135deg, #667eea, #764ba2);
       color: white;
-      padding: 8px 12px;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Main container */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      position: relative;
+    }
+
+    /* Title with animation */
+    h1 {
+      text-align: center;
+      color: white;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      animation: slideInFromTop 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes slideInFromTop {
+      from {
+        opacity: 0;
+        transform: translateY(-50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Timer - Instagram story style */
+    .timer-container {
+      position: fixed;
+      top: 80px;
+      right: 2rem;
+      z-index: 50;
+      animation: slideInFromRight 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+    }
+
+    .timer-display {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      padding: 1rem 1.5rem;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .timer-label {
+      font-size: 0.8rem;
+      color: #666;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .timer-time {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #333;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    .timer-progress {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+
+    .timer-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 2px;
+      transition: width 1s linear;
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.8); }
+      100% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
+    }
+
+    @keyframes slideInFromRight {
+      from {
+        opacity: 0;
+        transform: translateX(100px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* Cards with smooth animations */
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 2rem;
+      margin: 1.5rem 0;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      animation: slideInFromBottom 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.6s;
+    }
+
+    .card:hover::before {
+      left: 100%;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+    }
+
+    @keyframes slideInFromBottom {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    section:nth-child(2) .card { animation-delay: 0.1s; }
+    section:nth-child(3) .card { animation-delay: 0.2s; }
+    section:nth-child(4) .card { animation-delay: 0.3s; }
+
+    h2 {
+      color: #333;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      position: relative;
+      display: inline-block;
+    }
+
+    h2::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 2px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card:hover h2::after {
+      width: 100%;
+    }
+
+    /* Test content styling */
+    .test-content {
+      background: linear-gradient(135deg, #f8f9ff, #f0f4ff);
+      border: 2px solid rgba(102, 126, 234, 0.1);
+      border-radius: 16px;
+      padding: 1.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      margin: 1rem 0;
+      transition: all 0.3s ease;
+    }
+
+    .test-content:hover {
+      border-color: rgba(102, 126, 234, 0.3);
+      transform: scale(1.01);
+    }
+
+    /* Textarea styling */
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 1.5rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 16px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      transform: scale(1.02);
+    }
+
+    /* Instagram-style buttons */
+    .btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem 2rem;
       border: none;
-      border-radius: 4px;
+      border-radius: 25px;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
       cursor: pointer;
-      margin-left: 10px;
-      margin-top: 10px;
-      font-size: 16px;
-      display: inline-block !important;
-      visibility: visible !important;
-      z-index: 1000;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      min-width: 140px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn:active {
+      transform: translateY(-1px);
+      transition: transform 0.1s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+      color: white;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      color: white;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+    }
+
+    /* Mic button special styling */
+    .mic-button {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 160px;
+      justify-content: center;
+    }
+
     .mic-button.recording {
-      background-color: #ff4444;
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      animation: pulse 1.5s infinite;
     }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+
     .mic-button:disabled {
-      background-color: #cccccc;
+      background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
       cursor: not-allowed;
+      opacity: 0.6;
     }
+
+    .mic-button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+    }
+
+    /* Control containers */
     .mic-container {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      margin-top: 20px;
-      margin-bottom: 30px;
-      padding: 10px;
-      border-top: 1px solid #eee;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
     }
+
     .mic-status {
-      color: red;
-      margin-left: 10px;
-      font-size: 14px;
+      color: #666;
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    .test-content {
-      white-space: pre-wrap;
-      font-family: monospace;
-      font-size: 16px;
-      line-height: 1.5;
-      margin: 10px 0;
-      padding: 10px;
-      background-color: #f9f9f9;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
+
     .submission-controls {
-      margin-top: 25px;
-      padding-top: 15px;
-      border-top: 1px solid #eee;
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      flex-wrap: wrap;
     }
-    .submit-button {
-      background-color: #007bff;
-      color: white;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-right: 10px;
-    }
-    .save-button {
-      background-color: #6c757d;
-      color: white;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    
-    /* Enhanced Modal styles for mobile optimization */
+
+    /* Enhanced Modal */
     .modal {
       display: none;
       position: fixed;
@@ -88,252 +465,276 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0,0,0,0.5);
-      backdrop-filter: blur(2px);
-      overflow: auto;
-      padding: 10px;
-      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      animation: fadeIn 0.3s ease-out;
     }
-    
+
     .modal-content {
-      background-color: #fefefe;
-      margin: auto;
-      padding: 25px;
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-      text-align: center;
+      background: white;
+      margin: 5% auto;
+      padding: 2.5rem;
+      border-radius: 24px;
+      width: 90%;
+      max-width: 500px;
       position: relative;
-      top: 50%;
-      transform: translateY(-50%);
-      animation: modalSlideIn 0.3s ease-out;
-      max-height: 90vh;
-      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      text-align: center;
     }
-    
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
     @keyframes modalSlideIn {
       from {
         opacity: 0;
-        transform: translateY(-60%) scale(0.9);
+        transform: translateY(-50px) scale(0.9);
       }
       to {
         opacity: 1;
-        transform: translateY(-50%) scale(1);
+        transform: translateY(0) scale(1);
       }
     }
-    
+
     .modal-content h3 {
-      margin-top: 0;
-      margin-bottom: 15px;
+      margin-bottom: 1rem;
       color: #333;
-      font-size: 20px;
+      font-size: 1.5rem;
+      font-weight: 700;
     }
-    
+
     .modal-content p {
-      margin-bottom: 25px;
+      margin-bottom: 2rem;
       color: #666;
-      font-size: 16px;
-      line-height: 1.4;
+      font-size: 1rem;
+      line-height: 1.5;
     }
-    
+
     .modal-buttons {
       display: flex;
-      gap: 15px;
+      gap: 1rem;
       justify-content: center;
       flex-wrap: wrap;
     }
-    
-    .modal-confirm {
-      background-color: #dc3545;
-      color: white;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      min-width: 140px;
-    }
-    
-    .modal-confirm:hover {
-      background-color: #c82333;
-      transform: translateY(-1px);
-    }
-    
-    .modal-cancel {
-      background-color: #6c757d;
-      color: white;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-      min-width: 140px;
-    }
-    
-    .modal-cancel:hover {
-      background-color: #5a6268;
-      transform: translateY(-1px);
+
+    /* Instructions list styling */
+    ul {
+      list-style: none;
+      padding-left: 0;
     }
 
-    /* Desktop styles */
-    @media screen and (min-width: 769px) {
-      .modal-content {
-        width: 90%;
-        max-width: 500px;
-        padding: 30px;
-      }
-      
-      .modal-buttons {
-        flex-direction: row;
-      }
+    ul li {
+      position: relative;
+      padding: 0.75rem 0 0.75rem 2rem;
+      color: #555;
+      line-height: 1.6;
+      transition: all 0.3s ease;
     }
 
-    /* Mobile and tablet styles */
-    @media screen and (max-width: 768px) {
-      .modal {
-        padding: 15px;
+    ul li::before {
+      content: '✨';
+      position: absolute;
+      left: 0;
+      top: 0.75rem;
+      font-size: 1rem;
+      animation: sparkle 2s infinite;
+    }
+
+    ul li:nth-child(even)::before {
+      animation-delay: 0.5s;
+    }
+
+    @keyframes sparkle {
+      0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.7; }
+      50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+    }
+
+    ul li:hover {
+      color: #333;
+      transform: translateX(5px);
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      main {
+        padding: 1rem;
       }
-      
-      .modal-content {
-        width: 95%;
-        max-width: none;
-        padding: 20px;
-        margin: 0;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        min-height: auto;
+
+      h1 {
+        font-size: 2rem;
       }
-      
-      .modal-content h3 {
-        font-size: 18px;
-        margin-bottom: 12px;
+
+      .timer-container {
+        position: relative;
+        top: auto;
+        right: auto;
+        margin-bottom: 1rem;
       }
-      
-      .modal-content p {
-        font-size: 15px;
-        margin-bottom: 20px;
+
+      .card {
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-radius: 16px;
       }
-      
-      .modal-buttons {
+
+      .submission-controls {
         flex-direction: column;
-        gap: 12px;
       }
-      
-      .modal-confirm,
-      .modal-cancel {
+
+      .btn {
         width: 100%;
-        padding: 14px 20px;
-        min-width: auto;
-        font-size: 16px;
+        margin-bottom: 0.5rem;
       }
-      
-      .mic-button {
-        margin-top: 10px;
-        width: auto;
-        min-width: 140px;
-        font-size: 14px;
-      }
-      
+
       .mic-container {
         flex-direction: column;
-        align-items: flex-start;
-        margin-bottom: 20px;
+        align-items: stretch;
       }
-      
-      .test-content {
-        font-size: 14px;
-        padding: 8px;
-      }
-      
-      .submission-controls {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      
-      .submit-button,
-      .save-button {
+
+      .mic-button {
         width: 100%;
-        margin-right: 0;
-        padding: 12px 15px;
-        font-size: 16px;
+      }
+
+      .modal-content {
+        margin: 10% auto;
+        padding: 2rem;
+        width: 95%;
+      }
+
+      .modal-buttons {
+        flex-direction: column;
+      }
+
+      nav ul {
+        flex-wrap: wrap;
+        padding: 0.5rem;
+      }
+
+      nav li {
+        margin: 0.25rem;
       }
     }
-    
-    /* Extra small mobile devices */
-    @media screen and (max-width: 480px) {
-      .modal {
-        padding: 10px;
-      }
-      
-      .modal-content {
-        width: 98%;
-        padding: 18px;
-      }
-      
-      .modal-content h3 {
-        font-size: 16px;
-      }
-      
-      .modal-content p {
-        font-size: 14px;
-      }
-      
-      .modal-confirm,
-      .modal-cancel {
-        padding: 12px 16px;
-        font-size: 15px;
-      }
+
+    /* Loading animation for form submission */
+    .btn.loading {
+      position: relative;
+      color: transparent;
+    }
+
+    .btn.loading::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      top: 50%;
+      left: 50%;
+      margin-left: -10px;
+      margin-top: -10px;
+      border: 2px solid transparent;
+      border-top: 2px solid currentColor;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Success checkmark animation */
+    .checkmark {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      transform: rotate(45deg);
+    }
+
+    .checkmark-stem {
+      position: absolute;
+      width: 3px;
+      height: 9px;
+      background-color: #28a745;
+      left: 11px;
+      top: 6px;
+    }
+
+    .checkmark-kick {
+      position: absolute;
+      width: 5px;
+      height: 3px;
+      background-color: #28a745;
+      left: 8px;
+      top: 12px;
     }
   </style>
 </head>
 <body>
+  <!-- Animated background -->
+  <div class="bg-animation">
+    <div class="particle" style="left: 10%; animation-delay: 0s; width: 6px; height: 6px;"></div>
+    <div class="particle" style="left: 20%; animation-delay: 2s; width: 8px; height: 8px;"></div>
+    <div class="particle" style="left: 25%; animation-delay: 4s; width: 4px; height: 4px;"></div>
+    <div class="particle" style="left: 40%; animation-delay: 1s; width: 10px; height: 10px;"></div>
+    <div class="particle" style="left: 70%; animation-delay: 3s; width: 6px; height: 6px;"></div>
+    <div class="particle" style="left: 80%; animation-delay: 5s; width: 8px; height: 8px;"></div>
+    <div class="particle" style="left: 90%; animation-delay: 1.5s; width: 4px; height: 4px;"></div>
+  </div>
+
   <header>
     <nav>
       <ul>
-        <li><a href="{{ url_for('student_dashboard') }}">Dashboard</a></li>
-        <li><a href="{{ url_for('video_lectures') }}">Video Lectures</a></li>
-        <li><a href="{{ url_for('student_tests') }}">Tests</a></li>
-        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        <li><a href="{{ url_for('student_dashboard') }}"><i class="fas fa-home"></i> Dashboard</a></li>
+        <li><a href="{{ url_for('video_lectures') }}"><i class="fas fa-play-circle"></i> Video Lectures</a></li>
+        <li><a href="{{ url_for('student_tests') }}"><i class="fas fa-clipboard-list"></i> Tests</a></li>
+        <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
       </ul>
     </nav>
   </header>
 
-  <main>
-    <h1>{{ test.title }}</h1>
+  <!-- Timer display -->
+  {% if test.is_timed %}
+  <div class="timer-container">
+    <div class="timer-display">
+      <div class="timer-label">Time Remaining</div>
+      <div class="timer-time" id="time-remaining">--:--:--</div>
+      <div class="timer-progress">
+        <div class="timer-progress-bar" id="timer-progress"></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
-    {% if test.is_timed %}
-    <p>Time Remaining: <span id="time-remaining">--:--:--</span></p>
-    {% endif %}
+  <main>
+    <h1><i class="fas fa-pencil-alt"></i> {{ test.title }}</h1>
 
     <section>
-      <h2>Test Instructions</h2>
       <div class="card">
+        <h2><i class="fas fa-info-circle"></i> Test Instructions</h2>
         <p><strong>Description:</strong> {{ test.description }}</p>
-        <p><strong>Type:</strong> {{ 'Timed' if test.is_timed else 'Untimed' }}</p>
+        <p><strong>Type:</strong> {{ 'Timed ⏱️' if test.is_timed else 'Untimed ♾️' }}</p>
         {% if test.is_timed %}
         <p><strong>Time Limit:</strong> {{ test.time_limit }} minutes</p>
         {% endif %}
         <ul>
-          <li>Read all questions carefully before answering.</li>
-          <li>Type or speak your answers in the text area provided below.</li>
+          <li>Read all questions carefully before answering</li>
+          <li>Type or speak your answers in the text area provided below</li>
           {% if test.is_timed %}
-          <li>The test will automatically submit when the time runs out.</li>
-          <li>Do not leave or refresh the page during the test.</li>
-          <li>Your work is automatically saved every 30 seconds.</li>
+          <li>The test will automatically submit when the time runs out</li>
+          <li>Do not leave or refresh the page during the test</li>
+          <li>Your work is automatically saved every 30 seconds</li>
           {% endif %}
+          <li>Take your time and do your best!</li>
         </ul>
       </div>
     </section>
 
     <section>
-      <h2>Test Questions</h2>
       <div class="card">
+        <h2><i class="fas fa-question-circle"></i> Test Questions</h2>
         {% if test_content %}
         <div class="test-content">{{ test_content | safe }}</div>
         {% else %}
@@ -343,34 +744,49 @@
     </section>
 
     <section>
-      <h2>Your Response</h2>
       <div class="card">
+        <h2><i class="fas fa-edit"></i> Your Response</h2>
         <form id="testForm" method="POST" action="{{ url_for('submit_test', assignment_id=assignment.id) }}">
-          <label for="content">Your Answer:</label><br>
-          <textarea name="response_content" id="content" rows="10" cols="100">{{ response.content if response and response.content else '' }}</textarea>
+          <label for="content" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Your Answer:</label>
+          <textarea name="response_content" id="content" placeholder="Start typing your answer here...">{{ response.content if response and response.content else '' }}</textarea>
           
           <div class="mic-container">
-            <button type="button" id="micButton" class="mic-button">🎙️ Start Recording</button>
-            <span id="micStatus" class="mic-status"></span>
+            <button type="button" id="micButton" class="mic-button">
+              <i class="fas fa-microphone"></i>
+              <span id="micButtonText">Start Recording</span>
+            </button>
+            <div id="micStatus" class="mic-status"></div>
           </div>
           
           <div class="submission-controls">
-            <button type="button" id="submitButton" class="submit-button">Submit Test</button>
-            <button type="button" id="saveButton" class="save-button">Save and Exit</button>
+            <button type="button" id="submitButton" class="btn btn-primary">
+              <i class="fas fa-paper-plane"></i>
+              Submit Test
+            </button>
+            <button type="button" id="saveButton" class="btn btn-secondary">
+              <i class="fas fa-save"></i>
+              Save & Exit
+            </button>
           </div>
         </form>
       </div>
     </section>
   </main>
 
-  <!-- Enhanced confirm submission modal -->
+  <!-- Enhanced modal -->
   <div id="confirmModal" class="modal">
     <div class="modal-content">
-      <h3>Confirm Test Submission</h3>
-      <p>Are you sure you want to submit your test? This action cannot be undone.</p>
+      <h3><i class="fas fa-check-circle" style="color: #28a745; margin-right: 0.5rem;"></i>Confirm Test Submission</h3>
+      <p>Are you sure you want to submit your test? This action cannot be undone and your response will be final.</p>
       <div class="modal-buttons">
-        <button id="confirmSubmit" class="modal-confirm">Yes, Submit Test</button>
-        <button id="cancelSubmit" class="modal-cancel">Cancel</button>
+        <button id="confirmSubmit" class="btn btn-success">
+          <i class="fas fa-check"></i>
+          Yes, Submit Test
+        </button>
+        <button id="cancelSubmit" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
       </div>
     </div>
   </div>
@@ -379,95 +795,177 @@
     // Timer script for timed tests
     {% if test.is_timed and time_remaining %}
     let timeRemaining = {{ time_remaining }};
+    let totalTime = {{ test.time_limit * 60 }};
     const timeDisplay = document.getElementById('time-remaining');
+    const progressBar = document.getElementById('timer-progress');
+    
     function updateTimer() {
       if (timeRemaining <= 0) {
         document.getElementById('testForm').submit();
         return;
       }
+      
       let hours = Math.floor(timeRemaining / 3600);
       let minutes = Math.floor((timeRemaining % 3600) / 60);
       let seconds = timeRemaining % 60;
+      
       timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      // Update progress bar
+      let progress = ((totalTime - timeRemaining) / totalTime) * 100;
+      progressBar.style.width = progress + '%';
+      
+      // Change color when time is running low
+      if (timeRemaining < 300) { // Less than 5 minutes
+        timeDisplay.style.color = '#dc3545';
+        progressBar.style.background = 'linear-gradient(90deg, #dc3545, #c82333)';
+      }
+      
       timeRemaining--;
     }
+    
     setInterval(updateTimer, 1000);
+    updateTimer(); // Initial call
     {% endif %}
 
-    // Autosave script
+    // Autosave with visual feedback
     document.addEventListener('DOMContentLoaded', function() {
       const textarea = document.getElementById('content');
+      const micStatus = document.getElementById('micStatus');
       let lastContent = textarea.value;
-      setInterval(function() {
+      let saveTimeout;
+      
+      // Show save indicator
+      function showSaveStatus(message, isSuccess = true) {
+        micStatus.innerHTML = `<i class="fas fa-${isSuccess ? 'check' : 'exclamation-triangle'}"></i> ${message}`;
+        micStatus.style.color = isSuccess ? '#28a745' : '#dc3545';
+        
+        setTimeout(() => {
+          micStatus.innerHTML = '';
+        }, 3000);
+      }
+      
+      // Autosave function
+      function autoSave() {
         if (textarea.value !== lastContent) {
           lastContent = textarea.value;
+          
           fetch('{{ url_for('submit_test', assignment_id=assignment.id) }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: `response_content=${encodeURIComponent(textarea.value)}&autosave=true`
-          }).then(response => response.json()).then(data => {
-            console.log(data.message);
+          })
+          .then(response => response.json())
+          .then(data => {
+            showSaveStatus('Auto-saved successfully');
+          })
+          .catch(error => {
+            showSaveStatus('Auto-save failed', false);
           });
         }
-      }, 30000);
+      }
+      
+      // Auto-save every 30 seconds
+      setInterval(autoSave, 30000);
+      
+      // Save on input with debounce
+      textarea.addEventListener('input', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(autoSave, 5000); // Save 5 seconds after typing stops
+      });
     });
 
-    // Speech-to-text script
+    // Enhanced Speech-to-text with smooth animations
     const micButton = document.getElementById('micButton');
+    const micButtonText = document.getElementById('micButtonText');
     const answerTextarea = document.getElementById('content');
     const micStatus = document.getElementById('micStatus');
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = 'en-US'; // Adjust as needed (e.g., 'hi-IN' for Hindi)
-      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      recognition.interimResults = true;
       recognition.continuous = false;
 
+      recognition.onstart = function() {
+        micButtonText.textContent = 'Stop Recording';
+        micButton.classList.add('recording');
+        micStatus.innerHTML = '<i class="fas fa-circle" style="color: #dc3545; animation: pulse 1s infinite;"></i> Recording... Speak now';
+      };
+
       recognition.onresult = function(event) {
-        if (event.results.length > 0) {
-          const transcript = event.results[0][0].transcript;
-          answerTextarea.value = answerTextarea.value + (answerTextarea.value ? ' ' : '') + transcript;
-          micStatus.textContent = 'Transcription added';
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        
+        if (event.results[event.results.length - 1].isFinal) {
+          const currentText = answerTextarea.value;
+          const newText = currentText + (currentText ? ' ' : '') + transcript;
+          answerTextarea.value = newText;
+          
+          // Animate textarea to show new content
+          answerTextarea.style.transform = 'scale(1.02)';
+          setTimeout(() => {
+            answerTextarea.style.transform = 'scale(1)';
+          }, 200);
+          
+          micStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #28a745;"></i> Transcription added successfully';
         }
       };
 
       recognition.onerror = function(event) {
         console.error('Speech recognition error:', event.error);
-        micButton.textContent = '🎙️ Start Recording';
+        micButtonText.textContent = 'Start Recording';
         micButton.classList.remove('recording');
-        micStatus.textContent = 'Error: ' + event.error;
+        
+        let errorMessage = 'Recognition error';
+        switch(event.error) {
+          case 'no-speech':
+            errorMessage = 'No speech detected. Try again.';
+            break;
+          case 'audio-capture':
+            errorMessage = 'Microphone not accessible';
+            break;
+          case 'not-allowed':
+            errorMessage = 'Microphone permission denied';
+            break;
+          default:
+            errorMessage = 'Recognition error: ' + event.error;
+        }
+        
+        micStatus.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i> ${errorMessage}`;
       };
 
       recognition.onend = function() {
-        micButton.textContent = '🎙️ Start Recording';
+        micButtonText.textContent = 'Start Recording';
         micButton.classList.remove('recording');
-        micStatus.textContent = '';
+        setTimeout(() => {
+          if (micStatus.textContent.includes('Recording')) {
+            micStatus.innerHTML = '';
+          }
+        }, 2000);
       };
 
       micButton.onclick = function() {
         if (!micButton.classList.contains('recording')) {
           try {
             recognition.start();
-            micButton.textContent = '🎙️ Stop Recording';
-            micButton.classList.add('recording');
-            micStatus.textContent = 'Recording...';
           } catch (e) {
-            micStatus.textContent = 'Error starting mic: ' + e.message;
+            micStatus.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i> Error starting microphone: ${e.message}`;
           }
         } else {
           recognition.stop();
         }
       };
 
-      // Log browser support
-      micStatus.textContent = 'Speech recognition supported';
     } else {
       micButton.disabled = true;
-      micButton.textContent = '🎙️ Mic Not Supported';
-      micStatus.textContent = 'Speech recognition not supported in this browser';
+      micButtonText.textContent = 'Mic Not Supported';
+      micStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #dc3545;"></i> Speech recognition not supported in this browser';
     }
     
-    // Enhanced confirmation modal setup
+    // Enhanced modal functionality with smooth animations
     const modal = document.getElementById('confirmModal');
     const submitBtn = document.getElementById('submitButton');
     const saveBtn = document.getElementById('saveButton');
@@ -475,51 +973,244 @@
     const cancelBtn = document.getElementById('cancelSubmit');
     const form = document.getElementById('testForm');
     
-    submitBtn.onclick = function() {
+    function showModal() {
       modal.style.display = "block";
-      // Prevent body scroll on mobile when modal is open
       document.body.style.overflow = 'hidden';
+      
+      // Add entrance animation
+      setTimeout(() => {
+        modal.querySelector('.modal-content').style.animation = 'modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+      }, 10);
     }
     
-    function closeModal() {
-      modal.style.display = "none";
-      // Restore body scroll
-      document.body.style.overflow = 'auto';
+    function hideModal() {
+      // Add exit animation
+      modal.querySelector('.modal-content').style.animation = 'modalSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      
+      setTimeout(() => {
+        modal.style.display = "none";
+        document.body.style.overflow = 'auto';
+      }, 300);
     }
     
-    cancelBtn.onclick = closeModal;
-    
-    // Close modal if clicked outside (but not on mobile to prevent accidental closes)
-    window.onclick = function(event) {
-      if (event.target == modal && window.innerWidth > 768) {
-        closeModal();
+    // Add exit animation keyframes
+    const exitAnimation = `
+      @keyframes modalSlideOut {
+        from {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(-50px) scale(0.9);
+        }
       }
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = exitAnimation;
+    document.head.appendChild(style);
+    
+    submitBtn.onclick = function() {
+      showModal();
     }
     
-    // Handle escape key
+    cancelBtn.onclick = function() {
+      hideModal();
+    }
+    
+    // Close modal on escape key
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Escape' && modal.style.display === 'block') {
-        closeModal();
+        hideModal();
       }
     });
     
+    // Close modal on outside click (desktop only)
+    window.onclick = function(event) {
+      if (event.target == modal && window.innerWidth > 768) {
+        hideModal();
+      }
+    }
+    
+    // Enhanced form submission with loading states
     confirmBtn.onclick = function() {
+      // Add loading state to confirm button
+      confirmBtn.classList.add('loading');
+      confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+      
       const input = document.createElement('input');
       input.type = 'hidden';
       input.name = 'submit_button';
       input.value = 'Submit Test';
       form.appendChild(input);
-      form.submit();
+      
+      // Add success animation before submit
+      setTimeout(() => {
+        confirmBtn.classList.remove('loading');
+        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Submitted!';
+        confirmBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+        
+        setTimeout(() => {
+          form.submit();
+        }, 500);
+      }, 1000);
     }
     
     saveBtn.onclick = function() {
+      // Add loading state to save button
+      saveBtn.classList.add('loading');
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      
       const input = document.createElement('input');
       input.type = 'hidden';
       input.name = 'submit_button';
       input.value = 'Save and Exit';
       form.appendChild(input);
-      form.submit();
+      
+      // Add success animation before submit
+      setTimeout(() => {
+        saveBtn.classList.remove('loading');
+        saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+        saveBtn.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+        
+        setTimeout(() => {
+          form.submit();
+        }, 500);
+      }, 800);
     }
+    
+    // Enhanced textarea interactions
+    const textarea = document.getElementById('content');
+    
+    textarea.addEventListener('focus', function() {
+      this.parentElement.style.background = 'rgba(102, 126, 234, 0.05)';
+      this.parentElement.style.transform = 'translateY(-2px)';
+    });
+    
+    textarea.addEventListener('blur', function() {
+      this.parentElement.style.background = '';
+      this.parentElement.style.transform = '';
+    });
+    
+    // Smooth scrolling for navigation
+    document.querySelectorAll('nav a').forEach(link => {
+      link.addEventListener('click', function(e) {
+        // Add click animation
+        this.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          this.style.transform = '';
+        }, 150);
+      });
+    });
+    
+    // Add floating particles animation
+    function createFloatingParticle() {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = Math.random() * 100 + '%';
+      particle.style.width = particle.style.height = (Math.random() * 8 + 4) + 'px';
+      particle.style.animationDelay = Math.random() * 6 + 's';
+      particle.style.animationDuration = (Math.random() * 4 + 6) + 's';
+      
+      document.querySelector('.bg-animation').appendChild(particle);
+      
+      // Remove particle after animation
+      setTimeout(() => {
+        if (particle.parentNode) {
+          particle.parentNode.removeChild(particle);
+        }
+      }, 10000);
+    }
+    
+    // Create new particles periodically
+    setInterval(createFloatingParticle, 3000);
+    
+    // Add smooth reveal animation for cards on scroll
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, observerOptions);
+    
+    // Observe all cards
+    document.querySelectorAll('.card').forEach(card => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(30px)';
+      card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+      observer.observe(card);
+    });
+    
+    // Add typing indicator animation
+    let typingTimer;
+    textarea.addEventListener('input', function() {
+      // Show typing indicator
+      if (!micStatus.innerHTML.includes('Auto-saved')) {
+        micStatus.innerHTML = '<i class="fas fa-keyboard" style="color: #667eea;"></i> Typing...';
+      }
+      
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(() => {
+        if (micStatus.innerHTML.includes('Typing')) {
+          micStatus.innerHTML = '';
+        }
+      }, 2000);
+    });
+    
+    // Prevent accidental page refresh
+    window.addEventListener('beforeunload', function(e) {
+      if (textarea.value.trim() !== '') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+    
+    // Add subtle hover effects to form elements
+    document.querySelectorAll('input, textarea, button').forEach(element => {
+      element.addEventListener('mouseenter', function() {
+        this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      });
+    });
+    
+    // Initialize all animations
+    document.addEventListener('DOMContentLoaded', function() {
+      // Stagger animation for navigation items
+      document.querySelectorAll('nav a').forEach((link, index) => {
+        link.style.animationDelay = (index * 0.1) + 's';
+        link.style.animation = 'slideInFromTop 0.6s cubic-bezier(0.4, 0, 0.2, 1) both';
+      });
+      
+      // Add focus trap for modal
+      const focusableElements = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      
+      document.addEventListener('keydown', function(e) {
+        if (modal.style.display === 'block' && e.key === 'Tab') {
+          const modalFocusableElements = modal.querySelectorAll(focusableElements);
+          const firstElement = modalFocusableElements[0];
+          const lastElement = modalFocusableElements[modalFocusableElements.length - 1];
+          
+          if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+              lastElement.focus();
+              e.preventDefault();
+            }
+          } else {
+            if (document.activeElement === lastElement) {
+              firstElement.focus();
+              e.preventDefault();
+            }
+          }
+        }
+      });
+    });
   </script>
 </body>
 </html>
