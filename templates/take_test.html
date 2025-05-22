@@ -36,7 +36,7 @@
       align-items: center;
       flex-wrap: wrap;
       margin-top: 20px;
-      margin-bottom: 30px; /* Added more space below mic section */
+      margin-bottom: 30px;
       padding: 10px;
       border-top: 1px solid #eee;
     }
@@ -46,8 +46,8 @@
       font-size: 14px;
     }
     .test-content {
-      white-space: pre-wrap; /* Preserve line breaks and spaces */
-      font-family: monospace; /* Improve readability */
+      white-space: pre-wrap;
+      font-family: monospace;
       font-size: 16px;
       line-height: 1.5;
       margin: 10px 0;
@@ -78,62 +78,216 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    /* Modal styles */
+    
+    /* Enhanced Modal styles for mobile optimization */
     .modal {
       display: none;
       position: fixed;
-      z-index: 1000;
+      z-index: 9999;
       left: 0;
       top: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0,0,0,0.4);
+      background-color: rgba(0,0,0,0.5);
+      backdrop-filter: blur(2px);
+      overflow: auto;
+      padding: 10px;
+      box-sizing: border-box;
     }
+    
     .modal-content {
       background-color: #fefefe;
-      margin: 15% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%;
-      max-width: 500px;
-      border-radius: 5px;
+      margin: auto;
+      padding: 25px;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
       text-align: center;
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+      animation: modalSlideIn 0.3s ease-out;
+      max-height: 90vh;
+      overflow-y: auto;
     }
+    
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-60%) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+      }
+    }
+    
+    .modal-content h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #333;
+      font-size: 20px;
+    }
+    
+    .modal-content p {
+      margin-bottom: 25px;
+      color: #666;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+    
     .modal-buttons {
-      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
     }
+    
     .modal-confirm {
       background-color: #dc3545;
       color: white;
-      padding: 8px 16px;
-      margin-right: 10px;
+      padding: 12px 24px;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      min-width: 140px;
     }
+    
+    .modal-confirm:hover {
+      background-color: #c82333;
+      transform: translateY(-1px);
+    }
+    
     .modal-cancel {
       background-color: #6c757d;
       color: white;
-      padding: 8px 16px;
+      padding: 12px 24px;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      min-width: 140px;
     }
+    
+    .modal-cancel:hover {
+      background-color: #5a6268;
+      transform: translateY(-1px);
+    }
+
+    /* Desktop styles */
+    @media screen and (min-width: 769px) {
+      .modal-content {
+        width: 90%;
+        max-width: 500px;
+        padding: 30px;
+      }
+      
+      .modal-buttons {
+        flex-direction: row;
+      }
+    }
+
+    /* Mobile and tablet styles */
     @media screen and (max-width: 768px) {
+      .modal {
+        padding: 15px;
+      }
+      
+      .modal-content {
+        width: 95%;
+        max-width: none;
+        padding: 20px;
+        margin: 0;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        min-height: auto;
+      }
+      
+      .modal-content h3 {
+        font-size: 18px;
+        margin-bottom: 12px;
+      }
+      
+      .modal-content p {
+        font-size: 15px;
+        margin-bottom: 20px;
+      }
+      
+      .modal-buttons {
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .modal-confirm,
+      .modal-cancel {
+        width: 100%;
+        padding: 14px 20px;
+        min-width: auto;
+        font-size: 16px;
+      }
+      
       .mic-button {
         margin-top: 10px;
         width: auto;
         min-width: 140px;
         font-size: 14px;
       }
+      
       .mic-container {
         flex-direction: column;
         align-items: flex-start;
         margin-bottom: 20px;
       }
+      
       .test-content {
         font-size: 14px;
         padding: 8px;
+      }
+      
+      .submission-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .submit-button,
+      .save-button {
+        width: 100%;
+        margin-right: 0;
+        padding: 12px 15px;
+        font-size: 16px;
+      }
+    }
+    
+    /* Extra small mobile devices */
+    @media screen and (max-width: 480px) {
+      .modal {
+        padding: 10px;
+      }
+      
+      .modal-content {
+        width: 98%;
+        padding: 18px;
+      }
+      
+      .modal-content h3 {
+        font-size: 16px;
+      }
+      
+      .modal-content p {
+        font-size: 14px;
+      }
+      
+      .modal-confirm,
+      .modal-cancel {
+        padding: 12px 16px;
+        font-size: 15px;
       }
     }
   </style>
@@ -209,7 +363,7 @@
     </section>
   </main>
 
-  <!-- Confirm submission modal -->
+  <!-- Enhanced confirm submission modal -->
   <div id="confirmModal" class="modal">
     <div class="modal-content">
       <h3>Confirm Test Submission</h3>
@@ -313,7 +467,7 @@
       micStatus.textContent = 'Speech recognition not supported in this browser';
     }
     
-    // Confirmation modal setup
+    // Enhanced confirmation modal setup
     const modal = document.getElementById('confirmModal');
     const submitBtn = document.getElementById('submitButton');
     const saveBtn = document.getElementById('saveButton');
@@ -323,18 +477,31 @@
     
     submitBtn.onclick = function() {
       modal.style.display = "block";
+      // Prevent body scroll on mobile when modal is open
+      document.body.style.overflow = 'hidden';
     }
     
-    cancelBtn.onclick = function() {
+    function closeModal() {
       modal.style.display = "none";
+      // Restore body scroll
+      document.body.style.overflow = 'auto';
     }
     
-    // Close modal if clicked outside
+    cancelBtn.onclick = closeModal;
+    
+    // Close modal if clicked outside (but not on mobile to prevent accidental closes)
     window.onclick = function(event) {
-      if (event.target == modal) {
-        modal.style.display = "none";
+      if (event.target == modal && window.innerWidth > 768) {
+        closeModal();
       }
     }
+    
+    // Handle escape key
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && modal.style.display === 'block') {
+        closeModal();
+      }
+    });
     
     confirmBtn.onclick = function() {
       const input = document.createElement('input');
