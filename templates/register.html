@@ -14,6 +14,42 @@
 
 <!-- Dark mode JavaScript -->
 <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+
+<style>
+    .password-input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    
+    .password-input-container input {
+        padding-right: 40px;
+        width: 100%;
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 10px;
+        cursor: pointer;
+        color: #666;
+        font-size: 16px;
+        user-select: none;
+        z-index: 1;
+    }
+    
+    .password-toggle:hover {
+        color: #333;
+    }
+    
+    /* Dark mode styles for password toggle */
+    body.dark-mode .password-toggle {
+        color: #ccc;
+    }
+    
+    body.dark-mode .password-toggle:hover {
+        color: #fff;
+    }
+</style>
 </head>
 <body>
     <div class="header">
@@ -43,7 +79,10 @@
                 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Choose a password" required>
+                    <div class="password-input-container">
+                        <input type="password" id="password" name="password" placeholder="Choose a password" required>
+                        <i class="fa fa-eye password-toggle" onclick="togglePassword('password')" id="password-toggle"></i>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -56,7 +95,10 @@
 
                 <div id="admin_passcode_div" class="form-group" style="display: none;">
                     <label for="admin_passcode">Admin Passcode</label>
-                    <input type="password" id="admin_passcode" name="admin_passcode" placeholder="Enter admin passcode">
+                    <div class="password-input-container">
+                        <input type="password" id="admin_passcode" name="admin_passcode" placeholder="Enter admin passcode">
+                        <i class="fa fa-eye password-toggle" onclick="togglePassword('admin_passcode')" id="admin_passcode-toggle"></i>
+                    </div>
                 </div>
                 
                 <div class="text-center">
@@ -79,6 +121,21 @@
             let role = document.getElementById("role").value;
             let adminPasscodeDiv = document.getElementById("admin_passcode_div");
             adminPasscodeDiv.style.display = (role === "admin") ? "block" : "none";
+        }
+
+        function togglePassword(inputId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(inputId + '-toggle');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
         }
     </script>
 </body>

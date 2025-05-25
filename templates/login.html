@@ -14,6 +14,42 @@
 
 <!-- Dark mode JavaScript -->
 <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+
+<style>
+    .password-input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+    
+    .password-input-container input {
+        padding-right: 40px;
+        width: 100%;
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 10px;
+        cursor: pointer;
+        color: #666;
+        font-size: 16px;
+        user-select: none;
+        z-index: 1;
+    }
+    
+    .password-toggle:hover {
+        color: #333;
+    }
+    
+    /* Dark mode styles for password toggle */
+    body.dark-mode .password-toggle {
+        color: #ccc;
+    }
+    
+    body.dark-mode .password-toggle:hover {
+        color: #fff;
+    }
+</style>
 </head>
 <body>
     <div class="header">
@@ -43,7 +79,10 @@
                 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <div class="password-input-container">
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                        <i class="fa fa-eye password-toggle" onclick="togglePassword('password')" id="password-toggle"></i>
+                    </div>
                 </div>
                 
                 <div class="text-center">
@@ -60,5 +99,22 @@
     <div class="footer">
         <p>&copy; 2025 KS Classes. All rights reserved.</p>
     </div>
+
+    <script>
+        function togglePassword(inputId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(inputId + '-toggle');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+    </script>
 </body>
 </html>
