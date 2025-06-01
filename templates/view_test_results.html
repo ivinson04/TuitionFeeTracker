@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Results - KS Classes</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="{{ url_for('static', filename='darkmode.js') }}"></script>
+</head>
+<body>
+    <div class="header">
+        <h1 class="brand">KS Classes</h1>
+        <div class="subtitle">Learning Portal</div>
+    </div>
+    
+    <div class="nav-container">
+        <div class="container">
+            <div class="navigation">
+                <a href="{{ url_for('student_dashboard') }}" class="nav-link">Dashboard</a>
+                <a href="{{ url_for('video_lectures') }}" class="nav-link">Video Lectures</a>
+                <a href="{{ url_for('student_tests') }}" class="nav-link">Tests</a>
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Test Results: {{ test.title }}</h2>
+            </div>
+            <div class="card-body">
+                <div class="test-info">
+                    <h3>Test Information</h3>
+                    <p><strong>Description:</strong> {{ test.description }}</p>
+                    <p><strong>Completed On:</strong> {{ assignment.end_time.strftime('%Y-%m-%d at %H:%M') if assignment.end_time else 'Not completed' }}</p>
+                    <p><strong>Test Type:</strong> {{ 'Timed (' + test.time_limit|string + ' minutes)' if test.is_timed else 'Untimed' }}</p>
+                </div>
+
+                <div class="results-section mt-4">
+                    <h3>Your Results</h3>
+                    <div class="score-display">
+                        <p><strong>Score:</strong> 
+                        {% if assignment.score is not none %}
+                            <span class="score">{{ assignment.score }}</span>
+                        {% else %}
+                            <span class="not-graded">Not graded yet</span>
+                        {% endif %}
+                        </p>
+                    </div>
+
+                    {% if assignment.feedback %}
+                    <div class="feedback-section mt-3">
+                        <h4>Teacher's Feedback</h4>
+                        <div class="feedback-box">
+                            <pre style="white-space: pre-wrap; font-family: inherit;">{{ assignment.feedback }}</pre>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if not assignment.feedback and assignment.score is none %}
+                    <div class="pending-grade">
+                        <p><em>Your test has been submitted and is awaiting grading by your teacher.</em></p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="your-responses mt-4">
+                    <h3>Your Responses</h3>
+                    {% if responses %}
+                        {% for response in responses %}
+                            <div class="response-item">
+                                <p><strong>Submitted at:</strong> {{ response.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+                                {% if response.content %}
+                                <div class="response-content">
+                                    <h5>Your Answer:</h5>
+                                    <div class="response-text">
+                                        <pre style="white-space: pre-wrap;">{{ response.content }}</pre>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if response.file_path %}
+                                <p><a href="{{ url_for('serve_response_file', filename=response.file_path) }}" target="_blank" class="btn btn-info">View Submitted File</a></p>
+                                {% endif %}
+                            </div>
+                            <hr>
+                        {% endfor %}
+                    {% else %}
+                        <p>No responses found.</p>
+                    {% endif %}
+                </div>
+
+                <div class="actions mt-4">
+                    <a href="{{ url_for('student_tests') }}" class="btn btn-primary">Back to Tests</a>
+                    <a href="{{ url_for('leaderboard') }}" class="btn btn-secondary">View Leaderboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>&copy; 2025 KS Classes. All rights reserved.</p>
+    </div>
+
+    <style>
+        .score {
+            font-size: 1.2em;
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .not-graded {
+            color: #ffc107;
+            font-style: italic;
+        }
+        
+        .feedback-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .response-text {
+            background-color: #e9ecef;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 5px;
+        }
+        
+        .pending-grade {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            color: #856404;
+        }
+        
+        .response-item {
+            margin-bottom: 20px;
+        }
+        
+        .actions {
+            text-align: center;
+        }
+        
+        .btn {
+            margin: 0 5px;
+        }
+    </style>
+</body>
+</html>

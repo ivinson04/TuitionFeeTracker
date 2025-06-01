@@ -137,27 +137,34 @@
                                         </button>
                                         
                                         <!-- Grade Modal -->
-                                        <div class="modal fade" id="gradeModal{{ data.assignment.id }}" tabindex="-1" role="dialog" aria-labelledby="gradeModalLabel{{ data.assignment.id }}" aria-hidden="true">
-                                            <div class="modal-dialog" role="document">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="gradeModalLabel{{ data.assignment.id }}">Grade {{ data.student.name }}'s Test</h5>
-                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                            <span aria-hidden="true">&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <form action="{{ url_for('grade_test', assignment_id=data.assignment.id) }}" method="post">
-                                                            <div class="form-group">
-                                                                <label for="score{{ data.assignment.id }}">Score</label>
-                                                                <input type="number" step="0.01" min="0" class="form-control" id="score{{ data.assignment.id }}" name="score" value="{{ data.assignment.score if data.assignment.score is not none else '' }}" required>
-                                                            </div>
-                                                            <button type="submit" class="btn btn-primary">Save Grade</button>
-                                                        </form>
-                                                    </div>
+                                        <!-- Replace the existing Grade Modal section with this updated version -->
+<!-- Grade Modal -->
+                                    <div class="modal fade" id="gradeModal{{ data.assignment.id }}" tabindex="-1" role="dialog" aria-labelledby="gradeModalLabel{{ data.assignment.id }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="gradeModalLabel{{ data.assignment.id }}">Grade {{ data.student.name }}'s Test</h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <form action="{{ url_for('grade_test_with_feedback', assignment_id=data.assignment.id) }}" method="post">
+                                                        <div class="form-group">
+                                                            <label for="score{{ data.assignment.id }}">Score</label>
+                                                            <input type="number" step="0.01" min="0" class="form-control" id="score{{ data.assignment.id }}" name="score" value="{{ data.assignment.score if data.assignment.score is not none else '' }}" required>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label for="feedback{{ data.assignment.id }}">Feedback for Student</label>
+                                                            <textarea class="form-control" id="feedback{{ data.assignment.id }}" name="feedback" rows="6" placeholder="Enter detailed feedback about the student's performance, areas for improvement, and any additional comments...">{{ data.assignment.feedback if data.assignment.feedback else '' }}</textarea>
+                                                            <small class="form-text text-muted">This feedback will be visible to the student when they view their test results.</small>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary">Save Grade & Feedback</button>
+                                                    </form>
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
                                     {% else %}
                                         <span class="text-warning">No submission data</span>
                                     {% endif %}

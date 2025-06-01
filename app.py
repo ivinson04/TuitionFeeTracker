@@ -785,6 +785,58 @@ def leaderboard():
     return render_template('leaderboard.html', leaderboards=leaderboards)
 
 
+@app.route('/grade_test_with_feedback/<int:assignment_id>', methods=['POST'])
+@login_required
+def grade_test_with_feedback(assignment_id):
+    if current_user.role != 'admin':
+        flash('Access denied: Admin privileges required', 'danger')
+        return redirect(url_for('student_dashboard'))
+
+    assignment = TestAssignment.query.get_or_404(assignment_id)
+    score = request.form.get('score', type=float)
+    feedback = request.form.get('feedback', '')
+
+    assignment.score = score
+    assignment.feedback = feedback
+    db.session.commit()
+
+    test = Test.query.get(assignment.test_id)
+    flash(f'Score and feedback saved for {assignment.student.name}.', 'success')
+    return redirect(url_for('view_test', test_id=test.id))
+
+
+@app.route('/view_test_results/<int:assignment_id>')
+@login_required
+def view_test_results(assignment_id):
+    if current_user.role != 'student':
+        flash('Access denied: Student privileges required', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        student = Student.query.filter_by(name=current_user.username).first()
+        if student:
+            student.user_id = current_user.id
+            db.session.commit()
+        else:
+            flash('Student profile not found. Please contact your administrator.', 'danger')
+            return redirect(url_for('student_dashboard'))
+
+    assignment = TestAssignment.query.get_or_404(assignment_id)
+    if assignment.student_id != student.id:
+        flash('Access denied: This test result is not for you.', 'danger')
+        return redirect(url_for('student_tests'))
+
+    if assignment.status != 'Completed':
+        flash('This test has not been completed yet.', 'warning')
+        return redirect(url_for('student_tests'))
+
+    test = Test.query.get(assignment.test_id)
+    responses = TestResponse.query.filter_by(assignment_id=assignment.id).order_by(TestResponse.timestamp.desc()).all()
+
+    return render_template('view_test_results.html', test=test, assignment=assignment, responses=responses)
+
+
 
 if __name__ == '__main__':
     with app.app_context():

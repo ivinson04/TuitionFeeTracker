@@ -91,6 +91,7 @@ class Test(db.Model):
 
 
 # Test Assignment model
+# Test Assignment model
 class TestAssignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     test_id = db.Column(db.Integer, db.ForeignKey('test.id'), nullable=False)
@@ -100,6 +101,7 @@ class TestAssignment(db.Model):
     start_time = db.Column(db.DateTime)
     end_time = db.Column(db.DateTime)
     score = db.Column(db.Float)
+    feedback = db.Column(db.Text)  # Add this line for feedback
     due_date = db.Column(db.DateTime)
     responses = db.relationship('TestResponse', backref='assignment', lazy=True, cascade="all, delete-orphan")
     student = db.relationship('Student')
