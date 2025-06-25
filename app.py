@@ -524,9 +524,11 @@ def delete_student(student_id):
     try:
         student = Student.query.get_or_404(student_id)
         user = User.query.filter_by(username=student.name, role='student').first()
-        # Delete student first to handle cascades
+        # Delete dependent records
+        TestAssignment.query.filter_by(student_id=student.id).delete()
+        Payment.query.filter_by(student_id=student.id).delete()
         db.session.delete(student)
-        if user and user.id != current_user.id:  # Prevent self-deletion
+        if user and user.id != current_user.id:
             db.session.delete(user)
         db.session.commit()
         flash(f'Student "{student.name}" deleted successfully!', 'success')
