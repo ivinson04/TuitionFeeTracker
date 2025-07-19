@@ -20,7 +20,7 @@ if not os.path.exists('instance'):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://tuition_db_6_user:iWR4NBL0k7wqSUIFOgOL47BsZuNJfng8@dpg-d1dlv3p5pdvs73amqetg-a/tuition_db_6'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://tuition_db_7_user:S3KMiYAmGMr3sHrLw7hL6HLB0IWT0APo@dpg-d1thvger433s73doq6b0-a/tuition_db_7'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Add this for performance
 
 # Initialize database with app
